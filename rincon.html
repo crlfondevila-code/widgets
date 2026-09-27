@@ -23,7 +23,8 @@ body { font: 14px/1.45 ui-sans-serif, -apple-system, "Segoe UI", Roboto, Helveti
 .vol input { width: 90px; accent-color: var(--muted); }
 .catbox { position: relative; border-top: 1px dashed var(--line); padding-top: 4px; }
 canvas { display: block; width: 100%; height: 64px; image-rendering: pixelated; cursor: pointer; }
-.cathint { position: absolute; right: 2px; top: 6px; font-size: 11px; color: var(--muted); pointer-events: none; }
+.cathint { position: absolute; right: 2px; top: 6px; font-size: 11px; color: var(--muted); pointer-events: none; transition: opacity .6s; }
+.cathint.gone { opacity: 0; }
 </style>
 </head>
 <body>
@@ -37,8 +38,8 @@ canvas { display: block; width: 100%; height: 64px; image-rendering: pixelated; 
     <div class="vol"><span>🔈</span><input id="vol" type="range" min="0" max="1" step="0.01" value="0.6" aria-label="Volumen"></div>
   </div>
   <div class="catbox">
-    <canvas id="cat" height="64" aria-label="La Mixa, un gato pixelado. Tócala."></canvas>
-    <div class="cathint">la Mixa · tócala</div>
+    <canvas id="cat" height="64" aria-label="Dos gatos pixelados, uno naranja y uno negro. Tócalos."></canvas>
+    <div class="cathint" id="cathint">tócalos</div>
   </div>
 </div>
 <script>
@@ -161,67 +162,115 @@ NAMES.forEach(([k, label]) => {
 });
 document.getElementById('vol').oninput = e => { if (master) master.gain.setTargetAtTime(+e.target.value, ctx.currentTime, 0.05); };
 
-// ---------- La Mixa, gata pixelada ----------
-const PAL = { o: '#e89b4f', d: '#6b3f1d', k: '#1b1b1b', p: '#f29bb0', w: '#fff4e6' };
+// ---------- Los dos gatos pixelados: uno naranja y uno negro ----------
+// Nombres opcionales en el enlace: rincon.html#gatos=Naranja,Negro  (primero el naranja, luego el negro)
+const HP = new URLSearchParams(location.hash.slice(1));
+const CAT_NAMES = (HP.get('gatos') || '').split(',').map(t => t.trim()).filter(Boolean);
+const DARK = matchMedia('(prefers-color-scheme: dark)');
 const F = {
   walk1: ['..........d..d', 'd........ooooo', 'd........okoko', 'od.......ooopo', '.od.oooooooooo', '..doooooooooo.', '...oooooooooo.', '...oowwwwwwoo.', '...o.o....o.o.', '...d.d....d.d.'],
   walk2: ['..........d..d', 'd........ooooo', 'd........okoko', 'od.......ooopo', '.od.oooooooooo', '..doooooooooo.', '...oooooooooo.', '...oowwwwwwoo.', '....o.o..o.o..', '....d.d..d.d..'],
   sit:   ['..........d..d', '.........ooooo', '.........okoko', '.........ooopo', '........oooooo', '.......oooooo.', '......oowwwoo.', '......oowwwoo.', '..ddd.ooooooo.', '....dddodddod.'],
   sleep: ['..............', '..............', '..............', '..........d..d', '.........ooooo', '.........ododo', '...ooooooooooo', '..oooowwwwoooo', '..oooooooooooo', 'dddddddddddddd']
 };
-const cv = document.getElementById('cat'), g = cv.getContext('2d');
 const S = 4, CW = 14 * S, CH = 10 * S;
-let W = 300, x = 20, dir = 1, state = 'walk', until = 0, frame = 0, jump = 0, parts = [];
-function resize() { W = Math.max(160, cv.clientWidth); cv.width = W * devicePixelRatio; cv.height = 64 * devicePixelRatio; g.setTransform(devicePixelRatio, 0, 0, devicePixelRatio, 0, 0); g.imageSmoothingEnabled = false; }
-function draw(spr, px, py, flip) {
-  for (let r = 0; r < spr.length; r++) for (let c = 0; c < spr[r].length; c++) {
-    const ch = spr[r][c]; if (ch === '.') continue;
-    g.fillStyle = PAL[ch]; const cc = flip ? spr[r].length - 1 - c : c;
-    g.fillRect(Math.round(px + cc * S), Math.round(py + r * S), S, S);
+const cats = [
+  { name: CAT_NAMES[0] || '', pal: { o: '#e89b4f', d: '#6b3f1d', k: '#1b1b1b', p: '#f29bb0', w: '#fff4e6' }, speed: 22, x: 20, dir: 1 },
+  // negro: ojos ámbar y un borde suave en modo oscuro para que no desaparezca en el fondo
+  { name: CAT_NAMES[1] || '', pal: { o: '#2b2b30', d: '#121214', k: '#e8c547', p: '#d98a9c', w: '#3d3d44' }, speed: 18, x: 200, dir: -1, halo: true }
+].map(c => Object.assign(c, { state: 'walk', until: 0, frame: 0, jump: 0, t0: Math.random() * 1000 }));
+const cv = document.getElementById('cat'), g = cv.getContext('2d');
+let W = 300, parts = [], meetUntil = 0, nextMeet = 0;
+if (cats[0].name || cats[1].name) {
+  const n = cats.map(c => c.name).filter(Boolean);
+  document.getElementById('cathint').textContent = n.join(' y ') + ' · tócalos';
+  cv.setAttribute('aria-label', 'Dos gatos pixelados: ' + n.join(' y ') + '. Tócalos.');
+}
+function resize() {
+  W = Math.max(160, cv.clientWidth); cv.width = W * devicePixelRatio; cv.height = 64 * devicePixelRatio;
+  g.setTransform(devicePixelRatio, 0, 0, devicePixelRatio, 0, 0); g.imageSmoothingEnabled = false;
+  cats.forEach(c => { c.x = Math.min(Math.max(2, c.x), W - CW - 2); });
+}
+function draw(spr, pal, px, py, flip, halo) {
+  const cell = (r, c, color, ox, oy) => { const cc = flip ? spr[r].length - 1 - c : c; g.fillStyle = color; g.fillRect(Math.round(px + cc * S + ox), Math.round(py + r * S + oy), S, S); };
+  if (halo && DARK.matches) {
+    for (const [ox, oy] of [[-1, 0], [1, 0], [0, -1], [0, 1]])
+      for (let r = 0; r < spr.length; r++) for (let c = 0; c < spr[r].length; c++) if (spr[r][c] !== '.') cell(r, c, 'rgba(255,255,255,0.3)', ox, oy);
   }
+  for (let r = 0; r < spr.length; r++) for (let c = 0; c < spr[r].length; c++) { const ch = spr[r][c]; if (ch !== '.') cell(r, c, pal[ch], 0, 0); }
 }
-function pick(now) {
+function pick(c, now) {
   const r = Math.random();
-  if (state === 'sleep') state = r < 0.5 ? 'sit' : 'walk';
-  else state = r < 0.55 ? 'walk' : r < 0.8 ? 'sit' : 'sleep';
-  if (state === 'walk' && Math.random() < 0.4) dir = -dir;
-  until = now + (state === 'sleep' ? 9000 + Math.random() * 9000 : 2500 + Math.random() * 5000);
+  if (c.state === 'sleep') c.state = r < 0.5 ? 'sit' : 'walk';
+  else c.state = r < 0.55 ? 'walk' : r < 0.8 ? 'sit' : 'sleep';
+  if (c.state === 'walk' && Math.random() < 0.4) c.dir = -c.dir;
+  c.until = now + (c.state === 'sleep' ? 9000 + Math.random() * 9000 : 2500 + Math.random() * 5000);
 }
+function heart(x, y) { parts.push({ t: 'h', x, y, vy: -18, life: 1.4 }); }
 let lastT = performance.now();
 function loop(now) {
   const dt = Math.min(0.05, (now - lastT) / 1000); lastT = now;
-  if (now > until) pick(now);
-  if (state === 'walk') {
-    x += dir * 22 * dt;
-    if (x < 2) { x = 2; dir = 1; } if (x > W - CW - 2) { x = W - CW - 2; dir = -1; }
-    frame = Math.floor(now / 220) % 2;
+  const [a, b] = cats;
+  // Si se cruzan caminando, a veces se paran a saludarse
+  if (now > nextMeet && a.state === 'walk' && b.state === 'walk' && Math.abs(a.x - b.x) < CW * 0.8) {
+    nextMeet = now + 12000;
+    if (Math.random() < 0.6) {
+      meetUntil = now + 2600;
+      const left = a.x < b.x ? a : b, right = left === a ? b : a;
+      left.dir = 1; right.dir = -1; left.state = right.state = 'sit'; left.until = right.until = meetUntil;
+      if (right.x - left.x < CW * 0.55) { const mid = (left.x + right.x) / 2; left.x = Math.max(2, mid - CW * 0.3); right.x = Math.min(W - CW - 2, mid + CW * 0.3); }
+      heart((left.x + right.x) / 2 + CW / 2 - 4, 64 - CH - 6);
+    }
   }
-  if (jump > 0) jump = Math.max(0, jump - dt * 2.2);
-  const jy = jump > 0 ? -Math.sin(jump * Math.PI) * 18 : 0;
+  for (const c of cats) {
+    if (now > c.until) pick(c, now);
+    if (c.state === 'walk') {
+      c.x += c.dir * c.speed * dt;
+      if (c.x < 2) { c.x = 2; c.dir = 1; } if (c.x > W - CW - 2) { c.x = W - CW - 2; c.dir = -1; }
+      c.frame = Math.floor((now + c.t0) / 220) % 2;
+    }
+    if (c.jump > 0) c.jump = Math.max(0, c.jump - dt * 2.2);
+    if (c.state === 'sleep' && Math.random() < dt * 0.9) parts.push({ t: 'z', x: c.x + (c.dir > 0 ? CW - 6 : 6), y: 64 - CH, vy: -10, life: 2.2 });
+  }
   g.clearRect(0, 0, W, 64);
-  const spr = state === 'walk' ? (frame ? F.walk2 : F.walk1) : state === 'sit' ? F.sit : F.sleep;
-  draw(spr, x, 64 - CH - 2 + jy, dir < 0);
-  if (state === 'sleep' && Math.random() < dt * 0.9) parts.push({ t: 'z', x: x + (dir > 0 ? CW - 6 : 6), y: 64 - CH, vy: -10, life: 2.2 });
+  for (const c of [b, a]) {   // el negro detrás, el naranja delante
+    const jy = c.jump > 0 ? -Math.sin(c.jump * Math.PI) * 18 : 0;
+    const spr = c.state === 'walk' ? (c.frame ? F.walk2 : F.walk1) : c.state === 'sit' ? F.sit : F.sleep;
+    draw(spr, c.pal, c.x, 64 - CH - 2 + jy, c.dir < 0, c.halo);
+  }
   parts = parts.filter(p => (p.life -= dt) > 0);
+  const ink = getComputedStyle(document.body).color;
   for (const p of parts) {
     p.y += p.vy * dt; p.x += (p.t === 'z' ? 6 : 0) * dt;
     g.globalAlpha = Math.min(1, p.life);
-    g.fillStyle = p.t === 'z' ? getComputedStyle(document.body).color : '#e5484d';
-    g.font = p.t === 'z' ? 'bold 11px ui-monospace, monospace' : '14px sans-serif';
-    g.fillText(p.t === 'z' ? 'z' : '♥', p.x, p.y);
+    if (p.t === 'n') { g.fillStyle = ink; g.font = '600 11px ui-sans-serif, system-ui, sans-serif'; g.fillText(p.text, p.x, p.y); }
+    else { g.fillStyle = p.t === 'z' ? ink : '#e5484d'; g.font = p.t === 'z' ? 'bold 11px ui-monospace, monospace' : '14px sans-serif'; g.fillText(p.t === 'z' ? 'z' : '♥', p.x, p.y); }
     g.globalAlpha = 1;
   }
   requestAnimationFrame(loop);
 }
 cv.addEventListener('click', e => {
-  const r = cv.getBoundingClientRect(), mx = e.clientX - r.left;
-  if (mx > x - 10 && mx < x + CW + 10) {
-    if (state === 'sleep') { state = 'sit'; until = performance.now() + 3000; }
-    jump = 1; parts.push({ t: 'h', x: x + CW / 2 - 4, y: 64 - CH - 4, vy: -18, life: 1.4 });
-  } else { dir = mx > x ? 1 : -1; state = 'walk'; until = performance.now() + 3000; }
+  const r = cv.getBoundingClientRect(), mx = e.clientX - r.left, now = performance.now();
+  document.getElementById('cathint').classList.add('gone');   // la pista sobra después del primer toque
+  // el de delante (naranja) tiene prioridad si están encima el uno del otro
+  const hit = cats.find(c => mx > c.x - 8 && mx < c.x + CW + 8);
+  if (hit) {
+    if (hit.state === 'sleep' || now < meetUntil) { hit.state = 'sit'; hit.until = now + 3000; }
+    hit.jump = 1; heart(hit.x + CW / 2 - 4, 64 - CH - 4);
+    if (hit.name) {   // el nombre, al lado de la cabeza (a la izquierda si no cabe a la derecha)
+      g.font = '600 11px ui-sans-serif, system-ui, sans-serif';
+      const tw = g.measureText(hit.name).width, right = hit.x + CW + 4 + tw < W - 2;
+      parts.push({ t: 'n', text: hit.name, x: right ? hit.x + CW + 4 : hit.x - 4 - tw, y: 64 - CH + 6, vy: -5, life: 1.8 });
+    }
+  } else {
+    const c = cats.reduce((p, q) => Math.abs(q.x + CW / 2 - mx) < Math.abs(p.x + CW / 2 - mx) ? q : p);
+    c.dir = mx > c.x ? 1 : -1; c.state = 'walk'; c.until = now + 3000;
+  }
 });
 window.addEventListener('resize', resize);
-resize(); pick(performance.now()); state = 'walk'; requestAnimationFrame(loop);
+resize(); cats[1].x = Math.max(2, Math.min(W - CW - 2, W * 0.62));
+cats.forEach(c => { pick(c, performance.now()); c.state = 'walk'; });
+requestAnimationFrame(loop);
 </script>
 </body>
 </html>
