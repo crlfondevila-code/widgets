@@ -1,0 +1,171 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pomodoro</title>
+<style>
+:root { --bg:#fff; --card:#f7f7f5; --text:#37352f; --muted:#787774; --line:#e9e9e7; --on:#37352f; --onText:#fff;
+        --focus:#d4623b; --short:#3d8a67; --long:#3a6fae; }
+@media (prefers-color-scheme: dark) { :root { --bg:#191919; --card:#232323; --text:#e8e7e4; --muted:#9b9a97; --line:#303030; --on:#e8e7e4; --onText:#191919;
+        --focus:#ee8b66; --short:#6cc49b; --long:#86b0ea; } }
+* { box-sizing: border-box; }
+html, body { margin: 0; background: var(--bg); color: var(--text); }
+body { font: 14px/1.4 ui-sans-serif, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; -webkit-font-smoothing: antialiased; }
+.wrap { padding: 10px 12px 12px; max-width: 420px; margin: 0 auto; display: grid; gap: 10px; justify-items: center; }
+.tabs { display: flex; gap: 3px; background: var(--card); border-radius: 999px; padding: 3px; width: 100%; }
+.tabs button { flex: 1; border: 0; background: none; color: var(--muted); font: inherit; font-size: 12.5px; padding: 5px 6px; border-radius: 999px; cursor: pointer; white-space: nowrap; }
+.tabs button[aria-selected="true"] { background: var(--on); color: var(--onText); }
+.dial { position: relative; width: min(190px, 64vw); aspect-ratio: 1; }
+.dial svg { width: 100%; height: 100%; transform: rotate(-90deg); display: block; }
+.dial .track { stroke: var(--line); }
+.dial .arc { stroke: var(--c); stroke-linecap: round; transition: stroke-dashoffset .35s linear, stroke .3s; }
+.center { position: absolute; inset: 0; display: grid; place-content: center; text-align: center; gap: 2px; }
+.time { font-size: clamp(30px, 11vw, 42px); font-weight: 600; letter-spacing: -1px; font-variant-numeric: tabular-nums; color: var(--text); }
+.label { font-size: 12px; color: var(--muted); }
+.dots { display: flex; gap: 5px; justify-content: center; margin-top: 4px; }
+.dots i { width: 7px; height: 7px; border-radius: 50%; border: 1.5px solid var(--focus); }
+.dots i.on { background: var(--focus); }
+.ctrl { display: flex; gap: 6px; align-items: center; }
+.ctrl button { border: 1px solid var(--line); background: var(--bg); color: var(--text); border-radius: 999px; font: inherit; font-size: 13px; padding: 6px 12px; cursor: pointer; }
+.ctrl button:hover { border-color: var(--muted); }
+.ctrl .main { background: var(--c); border-color: var(--c); color: #fff; font-weight: 600; min-width: 104px; }
+@media (prefers-color-scheme: dark) { .ctrl .main { color: #191919; } }
+.ctrl .icon { width: 32px; height: 32px; padding: 0; display: grid; place-items: center; font-size: 14px; }
+.foot { font-size: 11.5px; color: var(--muted); text-align: center; }
+.ring { animation: ring 1.2s ease-in-out 3; }
+@keyframes ring { 50% { transform: scale(1.04); } }
+@media (prefers-reduced-motion: reduce) { .dial .arc { transition: none; } .ring { animation: none; } }
+</style>
+</head>
+<body>
+<div class="wrap" id="app">
+  <div class="tabs" role="tablist" aria-label="Modo">
+    <button type="button" role="tab" data-m="focus">Enfoque</button>
+    <button type="button" role="tab" data-m="short">Descanso</button>
+    <button type="button" role="tab" data-m="long">Largo</button>
+  </div>
+  <div class="dial" id="dial">
+    <svg viewBox="0 0 120 120" aria-hidden="true">
+      <circle class="track" cx="60" cy="60" r="54" fill="none" stroke-width="6"/>
+      <circle class="arc" id="arc" cx="60" cy="60" r="54" fill="none" stroke-width="6"/>
+    </svg>
+    <div class="center">
+      <div class="time" id="time" role="timer" aria-live="off">25:00</div>
+      <div class="label" id="label">Enfoque</div>
+      <div class="dots" id="dots" aria-hidden="true"></div>
+    </div>
+  </div>
+  <div class="ctrl">
+    <button type="button" class="icon" id="reset" title="Volver a empezar" aria-label="Volver a empezar">↺</button>
+    <button type="button" class="main" id="go">▶ Empezar</button>
+    <button type="button" class="icon" id="skip" title="Saltar al siguiente" aria-label="Saltar al siguiente">⏭</button>
+    <button type="button" class="icon" id="mute" title="Campana" aria-label="Campana activada">🔔</button>
+  </div>
+  <div class="foot" id="foot"></div>
+  <div id="say" aria-live="polite" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)"></div>
+</div>
+<script>
+// Pomodoro: 25 min de enfoque, 5 de descanso y 15 de descanso largo cada 4 pomodoros.
+// Se puede cambiar en el enlace: pomodoro.html#enfoque=25&descanso=5&largo=15&ciclo=4
+const H = new URLSearchParams(location.hash.slice(1));
+const num = (k, d, max) => { const v = parseFloat(H.get(k)); return v > 0 && v <= max ? v : d; };
+const MIN = { focus: num('enfoque', 25, 180), short: num('descanso', 5, 60), long: num('largo', 15, 90) };
+const CYCLE = Math.round(num('ciclo', 4, 8));
+const NAME = { focus: 'Enfoque', short: 'Descanso', long: 'Descanso largo' };
+const COLOR = { focus: '--focus', short: '--short', long: '--long' };
+const KEY = 'pomodoro-v1';
+const today = () => new Date().toISOString().slice(0, 10);
+
+const store = {
+  get() { try { return JSON.parse(localStorage.getItem(KEY)) || null; } catch (e) { return null; } },
+  set(v) { try { localStorage.setItem(KEY, JSON.stringify(v)); } catch (e) {} }
+};
+let S = store.get();
+if (!S || !MIN[S.mode]) S = { mode: 'focus', running: false, endAt: 0, left: MIN.focus * 60000, done: 0, day: today(), count: 0, mute: false };
+if (S.day !== today()) { S.day = today(); S.count = 0; }
+const save = () => store.set(S);
+
+const $ = id => document.getElementById(id);
+const arc = $('arc'), R = 54, CIRC = 2 * Math.PI * R;
+arc.style.strokeDasharray = CIRC;
+
+// ---- campana suave (sintetizada, sin archivos) ----
+let ac = null;
+function audio() { if (!ac) { try { ac = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) {} } if (ac && ac.state === 'suspended') ac.resume(); return ac; }
+function chime() {
+  if (S.mute || !ac) return;
+  const t0 = ac.currentTime + 0.05;
+  [[784, 0], [988, 0.45], [1175, 0.9]].forEach(([f, dt]) => {
+    const o = ac.createOscillator(), o2 = ac.createOscillator(), g = ac.createGain();
+    o.type = 'sine'; o.frequency.value = f; o2.type = 'sine'; o2.frequency.value = f * 2.01;
+    const g2 = ac.createGain(); g2.gain.value = 0.18; o2.connect(g2); g2.connect(g);
+    o.connect(g); g.connect(ac.destination);
+    g.gain.setValueAtTime(0.0001, t0 + dt); g.gain.exponentialRampToValueAtTime(0.28, t0 + dt + 0.02); g.gain.exponentialRampToValueAtTime(0.0001, t0 + dt + 1.6);
+    o.start(t0 + dt); o2.start(t0 + dt); o.stop(t0 + dt + 1.7); o2.stop(t0 + dt + 1.7);
+  });
+  if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
+}
+
+function total() { return MIN[S.mode] * 60000; }
+function remaining() { return S.running ? Math.max(0, S.endAt - Date.now()) : S.left; }
+function nextMode() { if (S.mode !== 'focus') return 'focus'; return S.done >= CYCLE ? 'long' : 'short'; }
+function setMode(m) {
+  S.mode = m; S.left = total(); S.running = false; S.endAt = 0;
+  if (m === 'focus' && S.done >= CYCLE) S.done = 0;
+  save(); render(true);
+}
+function finish(quiet, counts = true) {
+  if (S.mode === 'focus' && counts) { S.done++; S.count++; }   // saltar un enfoque no cuenta como pomodoro
+  const was = S.mode; const m = nextMode();
+  S.mode = m; S.left = total(); S.running = false; S.endAt = 0;
+  if (m === 'focus' && S.done >= CYCLE) S.done = 0;
+  save();
+  if (!quiet) {
+    chime(); $('dial').classList.remove('ring'); void $('dial').offsetWidth; $('dial').classList.add('ring');
+    $('say').textContent = (was === 'focus' ? 'Fin del enfoque. ' : 'Fin del descanso. ') + 'Ahora: ' + NAME[m] + '.';
+  }
+  render(true);
+}
+const fmt = ms => { const s = Math.ceil(ms / 1000), m = Math.floor(s / 60); return String(m).padStart(2, '0') + ':' + String(s % 60).padStart(2, '0'); };
+
+function render(full) {
+  const left = remaining(), tot = total();
+  $('time').textContent = fmt(left);
+  arc.style.strokeDashoffset = CIRC * (1 - left / tot);
+  if (!full) return;
+  document.documentElement.style.setProperty('--c', `var(${COLOR[S.mode]})`);
+  document.querySelectorAll('.tabs button').forEach(b => b.setAttribute('aria-selected', b.dataset.m === S.mode ? 'true' : 'false'));
+  $('label').textContent = NAME[S.mode];
+  $('go').textContent = S.running ? '❚❚ Pausa' : (left < tot ? '▶ Seguir' : '▶ Empezar');
+  const dots = $('dots'); dots.replaceChildren();
+  for (let k = 0; k < CYCLE; k++) { const i = document.createElement('i'); if (k < S.done) i.className = 'on'; dots.append(i); }
+  $('mute').textContent = S.mute ? '🔕' : '🔔';
+  $('mute').setAttribute('aria-label', S.mute ? 'Campana desactivada' : 'Campana activada');
+  $('foot').textContent = S.count ? `Hoy: ${S.count} pomodoro${S.count > 1 ? 's' : ''} · ${S.count * MIN.focus} min de enfoque` : `${MIN.focus} min de enfoque · ${MIN.short} de descanso`;
+}
+
+$('go').onclick = () => {
+  audio();
+  if (S.running) { S.left = remaining(); S.running = false; }
+  else { S.endAt = Date.now() + remaining(); S.running = true; }
+  save(); render(true);
+};
+$('reset').onclick = () => { S.left = total(); S.running = false; S.endAt = 0; save(); render(true); };
+$('skip').onclick = () => { audio(); finish(true, false); };
+$('mute').onclick = () => { S.mute = !S.mute; save(); render(true); };
+document.querySelectorAll('.tabs button').forEach(b => b.onclick = () => setMode(b.dataset.m));
+document.addEventListener('keydown', e => { if (e.code === 'Space' && e.target === document.body) { e.preventDefault(); $('go').click(); } });
+
+// Si se cerró la página con el reloj en marcha y ya ha terminado, se da por hecho (sin campana)
+if (S.running && S.endAt <= Date.now()) finish(true);
+render(true);
+setInterval(() => {
+  if (S.day !== today()) { S.day = today(); S.count = 0; save(); render(true); }
+  if (S.running && remaining() <= 0) finish(false); else render(false);
+}, 250);
+// Otra pestaña con el mismo pomodoro (p. ej. Notion abierto dos veces): se sincroniza
+window.addEventListener('storage', e => { if (e.key === KEY) { const v = store.get(); if (v) { S = v; render(true); } } });
+</script>
+</body>
+</html>
