@@ -19,10 +19,13 @@ button:hover { border-color: var(--muted); }
 article { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 18px 20px 16px; }
 h1 { margin: 0; font: 600 21px/1.25 Georgia, "Iowan Old Style", "Palatino Linotype", serif; }
 .who { margin: 4px 0 14px; color: var(--accent); font-size: 13.5px; }
-.poem { font: 16.5px/1.6 Georgia, "Iowan Old Style", "Palatino Linotype", serif; white-space: pre-line; margin: 0; }
+.poem { font: 16.5px/1.6 Georgia, "Iowan Old Style", "Palatino Linotype", serif; white-space: pre-wrap; overflow-wrap: anywhere; margin: 0; }
 .poem.prose { white-space: normal; }
 .poem.prose p { margin: 0 0 .8em; }
-.note { margin-top: 14px; padding-top: 10px; border-top: 1px solid var(--line); font-size: 12px; color: var(--muted); }
+.note { margin-top: 14px; padding-top: 10px; border-top: 1px solid var(--line); font-size: 12px; color: var(--muted); display: flex; flex-wrap: wrap; justify-content: space-between; gap: 4px 12px; }
+.more { border: 0; background: none; padding: 0; color: var(--accent); font-size: 12px; cursor: pointer; }
+.more:hover { text-decoration: underline; }
+.count { margin-top: 8px; font-size: 11.5px; color: var(--muted); text-align: right; }
 </style>
 </head>
 <body>
@@ -34,11 +37,14 @@ h1 { margin: 0; font: 600 21px/1.25 Georgia, "Iowan Old Style", "Palatino Linoty
     <h1 id="t"></h1>
     <div class="who" id="a"></div>
     <div class="poem" id="p"></div>
-    <div class="note" id="n"></div>
+    <div class="note"><span id="n"></span><button type="button" class="more" id="more"></button></div>
   </article>
+  <div class="count" id="count"></div>
 </div>
 <script>
-// Poemas de dominio público. Las traducciones al castellano son propias (T); los originales en castellano van tal cual (O).
+// Poemas de dominio público.
+// 1) Estos 19, dentro del archivo: traducciones propias (T) y originales en castellano (O). Se usan también si no carga la colección.
+// 2) poemas.json, en la misma carpeta: más de 2.000 poemas en castellano de autores fallecidos hace más de 80 años (colección poesi.as).
 const POEMS = [
   { t: 'Bebiendo solo bajo la luna', a: 'Li Bai (701–762)', k: 'T', from: 'chino',
     p: `Entre las flores, una jarra de vino;
@@ -238,22 +244,52 @@ Caminante, no hay camino,
 sino estelas en la mar.` }
 ];
 
-const dayIdx = () => { const n = new Date(), s = new Date(n.getFullYear(), 0, 0); return Math.floor((n - s) / 86400000); };
-let i = dayIdx() % POEMS.length;
+const $ = id => document.getElementById(id);
+const fmt = n => n.toLocaleString('es-ES');
+// Cada día, un poema distinto: se cuenta desde el 27-09-2026 y no se repite hasta agotar la colección
+const dayNum = () => { const n = new Date(); return Math.floor((Date.UTC(n.getFullYear(), n.getMonth(), n.getDate()) - Date.UTC(2026, 8, 27)) / 86400000); };
+const own = POEMS.map(x => Object.assign({}, x, { who: x.a.replace(/\s*\(.*\)\s*$/, '').split(',')[0].trim() }));
+const key = s => s.toLowerCase().normalize('NFD').replace(/[^a-z]/g, '').slice(0, 40);
+let ALL = own, AUTHORS = 1, i = 0, fromCorpus = false;
+
 function show() {
-  const x = POEMS[i];
-  document.getElementById('t').textContent = x.t;
-  document.getElementById('a').textContent = x.a;
-  const p = document.getElementById('p');
+  const x = ALL[i];
+  $('t').textContent = x.t;
+  $('a').textContent = x.a;
+  const p = $('p');
   p.className = 'poem' + (x.prose ? ' prose' : '');
   p.replaceChildren();
   if (x.prose) x.p.split('\n').forEach(par => { const e = document.createElement('p'); e.textContent = par; p.append(e); });
   else p.textContent = x.p;
-  document.getElementById('n').textContent = x.k === 'T' ? 'Traducción propia del ' + x.from + '. Texto de dominio público.' : 'Texto original, de dominio público.';
+  $('n').textContent = x.k === 'T' ? 'Traducción propia del ' + x.from + '. Dominio público.'
+                     : x.k === 'C' ? 'Dominio público · colección poesi.as' : 'Texto original, de dominio público.';
+  const same = ALL.filter(y => y.who === x.who).length;
+  $('more').hidden = same < 2;
+  $('more').textContent = 'Otro de ' + x.who + ' →';
+  $('count').textContent = fromCorpus ? fmt(ALL.length) + ' poemas de ' + fmt(AUTHORS) + ' autores' : '';
 }
-document.getElementById('other').onclick = () => { let j; do { j = Math.floor(Math.random() * POEMS.length); } while (j === i && POEMS.length > 1); i = j; show(); };
-document.getElementById('today').onclick = () => { i = dayIdx() % POEMS.length; show(); };
-show();
+function today() { const d = dayNum(); i = ((d % ALL.length) + ALL.length) % ALL.length; show(); }
+function randomWhere(test) {
+  const idx = []; ALL.forEach((y, k) => { if (k !== i && test(y)) idx.push(k); });
+  if (idx.length) { i = idx[Math.floor(Math.random() * idx.length)]; show(); }
+}
+$('other').onclick = () => randomWhere(() => true);
+$('today').onclick = today;
+$('more').onclick = () => { const w = ALL[i].who; randomWhere(y => y.who === w); };
+today();   // mientras carga la colección, uno de los 19
+
+fetch('poemas.json').then(r => { if (!r.ok) throw new Error(r.status); return r.json(); }).then(d => {
+  const mine = new Set(own.map(x => key(x.p)));
+  const big = d.poemas.filter(q => !mine.has(key(q[2]))).map(([ai, t, text]) => {
+    const [name, yrs] = d.autores[ai];
+    return { t, a: yrs ? name + ' (' + yrs + ')' : name, who: name, k: 'C', p: text };
+  });
+  // los 19 propios, repartidos entre los demás
+  const step = Math.floor(big.length / own.length);
+  own.forEach((x, k) => big.splice(k * (step + 1) + Math.floor(step / 2), 0, x));
+  ALL = big; AUTHORS = new Set(big.map(x => x.who)).size; fromCorpus = true;
+  today();
+}).catch(() => { /* sin la colección, siguen los 19 */ });
 </script>
 </body>
 </html>
