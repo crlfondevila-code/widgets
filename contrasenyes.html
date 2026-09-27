@@ -1,0 +1,543 @@
+<!doctype html>
+<html lang="ca">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Contrasenyes</title>
+<style>
+:root {
+  --bg: #ffffff; --surface: #f7f7f5; --surface2: #efefed; --text: #37352f; --muted: #787774;
+  --border: #e3e2e0; --accent: #2e7d4f; --accent-soft: #e6f2ea; --danger: #c4413b; --warn: #b26b00; --warn-soft: #fbf0dc;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #191919; --surface: #232323; --surface2: #2c2c2c; --text: #e8e7e4; --muted: #9b9a97;
+    --border: #353535; --accent: #5dbb87; --accent-soft: #1f3328; --danger: #ef6b64; --warn: #e3a54a; --warn-soft: #3a2e1a;
+  }
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; background: var(--bg); color: var(--text); }
+body { font: 14px/1.45 ui-sans-serif, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; -webkit-font-smoothing: antialiased; }
+#app { max-width: 460px; margin: 0 auto; padding: 16px; }
+button { font: inherit; color: inherit; cursor: pointer; border: 0; background: none; -webkit-tap-highlight-color: transparent; }
+button:focus-visible, input:focus-visible, textarea:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 14px; }
+.title { font-weight: 600; font-size: 15px; display: flex; align-items: center; gap: 6px; }
+.muted { color: var(--muted); }
+.small { font-size: 12.5px; }
+.btn { border-radius: 8px; padding: 7px 12px; background: var(--surface2); font-size: 13px; font-weight: 500; }
+.btn:hover { filter: brightness(0.97); }
+.btn.primary { background: var(--accent); color: #fff; }
+@media (prefers-color-scheme: dark) { .btn.primary { color: #10170f; } }
+.btn.ghost { background: none; color: var(--muted); padding: 6px 8px; }
+.btn[disabled] { opacity: .5; cursor: default; }
+
+/* PIN */
+.lock { display: flex; flex-direction: column; align-items: center; text-align: center; padding-top: 4px; }
+.dots { display: flex; gap: 12px; margin: 14px 0 6px; height: 14px; }
+.dot { width: 12px; height: 12px; border-radius: 50%; border: 1.5px solid var(--muted); transition: background .12s, border-color .12s; }
+.dot.on { background: var(--text); border-color: var(--text); }
+.dots.shake { animation: shake .35s; }
+@keyframes shake { 20%,60% { transform: translateX(-7px); } 40%,80% { transform: translateX(7px); } }
+.status { min-height: 20px; font-size: 12.5px; margin-bottom: 8px; }
+.status.err { color: var(--danger); }
+.pad { display: grid; grid-template-columns: repeat(3, 60px); gap: 10px 18px; }
+.key { width: 60px; height: 60px; border-radius: 50%; background: var(--surface); font-size: 22px; font-weight: 450; display: grid; place-items: center; transition: background .1s; }
+.key:active { background: var(--surface2); }
+.key.fn { background: none; font-size: 15px; color: var(--muted); }
+.pad.busy { opacity: .45; pointer-events: none; }
+.forgot { margin-top: 14px; }
+
+/* Llista */
+.list { display: flex; flex-direction: column; gap: 8px; }
+.card { background: var(--surface); border-radius: 10px; padding: 10px 12px; }
+.card h3 { margin: 0 0 6px; font-size: 14px; font-weight: 600; }
+.row { display: flex; align-items: center; gap: 6px; min-height: 30px; }
+.row .lbl { width: 78px; flex: none; font-size: 12px; color: var(--muted); }
+.row .val { flex: 1; min-width: 0; overflow-wrap: anywhere; font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; font-size: 13px; user-select: text; -webkit-user-select: text; }
+.row .val.hidden { letter-spacing: 2px; }
+.mini { font-size: 12px; padding: 4px 8px; border-radius: 6px; background: var(--surface2); color: var(--text); flex: none; }
+.note { font-size: 12.5px; color: var(--muted); margin-top: 4px; white-space: pre-wrap; }
+.foot { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
+.badge { font-size: 12px; padding: 3px 8px; border-radius: 999px; background: var(--warn-soft); color: var(--warn); }
+
+/* Configuració */
+.intro { font-size: 13px; color: var(--muted); margin: -4px 0 12px; }
+.erow { background: var(--surface); border-radius: 10px; padding: 8px; display: grid; grid-template-columns: 1fr auto; gap: 6px; margin-bottom: 8px; }
+.erow .fields { display: grid; gap: 6px; }
+input[type=text], input[type=password], input.pin, textarea {
+  width: 100%; font: inherit; font-size: 14px; color: var(--text); background: var(--bg);
+  border: 1px solid var(--border); border-radius: 7px; padding: 7px 9px;
+}
+input.svc { font-weight: 600; }
+.pw { display: flex; gap: 6px; }
+.pw input { flex: 1; min-width: 0; }
+.x { color: var(--muted); font-size: 18px; width: 28px; height: 28px; border-radius: 6px; }
+.x:hover { background: var(--surface2); }
+.pins { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 14px 0 6px; }
+.pins label { font-size: 12px; color: var(--muted); display: grid; gap: 4px; }
+input.pin { letter-spacing: 4px; font-size: 16px; }
+.actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+.result { margin-top: 14px; background: var(--accent-soft); border-radius: 10px; padding: 12px; }
+.result p { margin: 0 0 8px; font-size: 13px; }
+.result textarea { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 11.5px; height: 88px; resize: vertical; word-break: break-all; }
+.toast { position: fixed; left: 50%; bottom: 14px; transform: translateX(-50%); background: var(--text); color: var(--bg); padding: 7px 14px; border-radius: 999px; font-size: 13px; opacity: 0; transition: opacity .2s; pointer-events: none; }
+.toast.on { opacity: 1; }
+</style>
+</head>
+<body>
+<div id="app"></div>
+<div class="toast" id="toast"></div>
+<script>
+// Xifratge del widget: PBKDF2-HMAC-SHA256 (WebCrypto si hi és, si no JS pur)
+// + ChaCha20 (RFC 8439) + HMAC-SHA256 (encrypt-then-MAC).
+const PinCrypto = (function () {
+  const K = new Int32Array([
+    0x428a2f98, 0x71374491, 0xb5c0fbcf, 0xe9b5dba5, 0x3956c25b, 0x59f111f1, 0x923f82a4, 0xab1c5ed5,
+    0xd807aa98, 0x12835b01, 0x243185be, 0x550c7dc3, 0x72be5d74, 0x80deb1fe, 0x9bdc06a7, 0xc19bf174,
+    0xe49b69c1, 0xefbe4786, 0x0fc19dc6, 0x240ca1cc, 0x2de92c6f, 0x4a7484aa, 0x5cb0a9dc, 0x76f988da,
+    0x983e5152, 0xa831c66d, 0xb00327c8, 0xbf597fc7, 0xc6e00bf3, 0xd5a79147, 0x06ca6351, 0x14292967,
+    0x27b70a85, 0x2e1b2138, 0x4d2c6dfc, 0x53380d13, 0x650a7354, 0x766a0abb, 0x81c2c92e, 0x92722c85,
+    0xa2bfe8a1, 0xa81a664b, 0xc24b8b70, 0xc76c51a3, 0xd192e819, 0xd6990624, 0xf40e3585, 0x106aa070,
+    0x19a4c116, 0x1e376c08, 0x2748774c, 0x34b0bcb5, 0x391c0cb3, 0x4ed8aa4a, 0x5b9cca4f, 0x682e6ff3,
+    0x748f82ee, 0x78a5636f, 0x84c87814, 0x8cc70208, 0x90befffa, 0xa4506ceb, 0xbef9a3f7, 0xc67178f2]);
+  const IV = [0x6a09e667, 0xbb67ae85, 0x3c6ef372, 0xa54ff53a, 0x510e527f, 0x9b05688c, 0x1f83d9ab, 0x5be0cd19];
+  const W = new Int32Array(64);
+
+  // Processa 16 paraules (big-endian) sobre l'estat st (Int32Array(8)).
+  function block(st, m) {
+    for (let i = 0; i < 16; i++) W[i] = m[i];
+    for (let i = 16; i < 64; i++) {
+      const a = W[i - 15], b = W[i - 2];
+      const s0 = ((a >>> 7) | (a << 25)) ^ ((a >>> 18) | (a << 14)) ^ (a >>> 3);
+      const s1 = ((b >>> 17) | (b << 15)) ^ ((b >>> 19) | (b << 13)) ^ (b >>> 10);
+      W[i] = (W[i - 16] + s0 + W[i - 7] + s1) | 0;
+    }
+    let a = st[0], b = st[1], c = st[2], d = st[3], e = st[4], f = st[5], g = st[6], h = st[7];
+    for (let i = 0; i < 64; i++) {
+      const S1 = ((e >>> 6) | (e << 26)) ^ ((e >>> 11) | (e << 21)) ^ ((e >>> 25) | (e << 7));
+      const ch = (e & f) ^ (~e & g);
+      const t1 = (h + S1 + ch + K[i] + W[i]) | 0;
+      const S0 = ((a >>> 2) | (a << 30)) ^ ((a >>> 13) | (a << 19)) ^ ((a >>> 22) | (a << 10));
+      const mj = (a & b) ^ (a & c) ^ (b & c);
+      const t2 = (S0 + mj) | 0;
+      h = g; g = f; f = e; e = (d + t1) | 0; d = c; c = b; b = a; a = (t1 + t2) | 0;
+    }
+    st[0] = (st[0] + a) | 0; st[1] = (st[1] + b) | 0; st[2] = (st[2] + c) | 0; st[3] = (st[3] + d) | 0;
+    st[4] = (st[4] + e) | 0; st[5] = (st[5] + f) | 0; st[6] = (st[6] + g) | 0; st[7] = (st[7] + h) | 0;
+  }
+
+  function sha256(bytes) {
+    const len = bytes.length, total = ((len + 9 + 63) >> 6) << 6;
+    const buf = new Uint8Array(total);
+    buf.set(bytes); buf[len] = 0x80;
+    const bits = len * 8;
+    buf[total - 4] = (bits >>> 24) & 255; buf[total - 3] = (bits >>> 16) & 255;
+    buf[total - 2] = (bits >>> 8) & 255; buf[total - 1] = bits & 255;
+    buf[total - 5] = Math.floor(bits / 4294967296) & 255;
+    const st = new Int32Array(IV), m = new Int32Array(16);
+    for (let o = 0; o < total; o += 64) {
+      for (let i = 0; i < 16; i++) {
+        const p = o + i * 4;
+        m[i] = (buf[p] << 24) | (buf[p + 1] << 16) | (buf[p + 2] << 8) | buf[p + 3];
+      }
+      block(st, m);
+    }
+    return wordsToBytes(st);
+  }
+
+  function wordsToBytes(st) {
+    const out = new Uint8Array(32);
+    for (let i = 0; i < 8; i++) {
+      out[i * 4] = (st[i] >>> 24) & 255; out[i * 4 + 1] = (st[i] >>> 16) & 255;
+      out[i * 4 + 2] = (st[i] >>> 8) & 255; out[i * 4 + 3] = st[i] & 255;
+    }
+    return out;
+  }
+
+  function concat(...arrs) {
+    let n = 0; for (const a of arrs) n += a.length;
+    const out = new Uint8Array(n); let o = 0;
+    for (const a of arrs) { out.set(a, o); o += a.length; }
+    return out;
+  }
+
+  function hmacPads(key) {
+    if (key.length > 64) key = sha256(key);
+    const k = new Uint8Array(64); k.set(key);
+    const ip = new Uint8Array(64), op = new Uint8Array(64);
+    for (let i = 0; i < 64; i++) { ip[i] = k[i] ^ 0x36; op[i] = k[i] ^ 0x5c; }
+    return { ip, op };
+  }
+
+  function hmac(key, msg) {
+    const { ip, op } = hmacPads(key);
+    return sha256(concat(op, sha256(concat(ip, msg))));
+  }
+
+  // PBKDF2-HMAC-SHA256 en JS pur, amb els estats interns precalculats.
+  function pbkdf2js(pass, salt, iters, dkLen) {
+    const { ip, op } = hmacPads(pass);
+    const toWords = (b, o) => { const m = new Int32Array(16); for (let i = 0; i < 16; i++) { const p = o + i * 4; m[i] = (b[p] << 24) | (b[p + 1] << 16) | (b[p + 2] << 8) | b[p + 3]; } return m; };
+    const ist = new Int32Array(IV); block(ist, toWords(ip, 0));
+    const ost = new Int32Array(IV); block(ost, toWords(op, 0));
+    const out = new Uint8Array(dkLen);
+    const blocks = Math.ceil(dkLen / 32);
+    const m = new Int32Array(16), st = new Int32Array(8), u = new Int32Array(8), t = new Int32Array(8);
+    for (let bi = 1; bi <= blocks; bi++) {
+      const u1 = hmac(pass, concat(salt, new Uint8Array([bi >>> 24, (bi >>> 16) & 255, (bi >>> 8) & 255, bi & 255])));
+      for (let i = 0; i < 8; i++) { u[i] = (u1[i * 4] << 24) | (u1[i * 4 + 1] << 16) | (u1[i * 4 + 2] << 8) | u1[i * 4 + 3]; t[i] = u[i]; }
+      for (let it = 1; it < iters; it++) {
+        // interior: estat ipad + (u || padding) amb longitud (64+32)*8 = 768 bits
+        st.set(ist); m.fill(0); m.set(u); m[8] = 0x80000000; m[15] = 768; block(st, m);
+        m.fill(0); m.set(st); m[8] = 0x80000000; m[15] = 768;
+        st.set(ost); block(st, m);
+        for (let i = 0; i < 8; i++) { u[i] = st[i]; t[i] ^= st[i]; }
+      }
+      const tb = wordsToBytes(t);
+      out.set(tb.subarray(0, Math.min(32, dkLen - (bi - 1) * 32)), (bi - 1) * 32);
+    }
+    return out;
+  }
+
+  async function pbkdf2(pass, salt, iters, dkLen) {
+    try {
+      if (globalThis.crypto && crypto.subtle && !globalThis.__forceJsKdf) {
+        const k = await crypto.subtle.importKey('raw', pass, 'PBKDF2', false, ['deriveBits']);
+        const bits = await crypto.subtle.deriveBits({ name: 'PBKDF2', hash: 'SHA-256', salt, iterations: iters }, k, dkLen * 8);
+        return new Uint8Array(bits);
+      }
+    } catch (e) { /* cau al JS pur */ }
+    return pbkdf2js(pass, salt, iters, dkLen);
+  }
+
+  // ChaCha20 (RFC 8439), comptador inicial 1.
+  function chacha20(key, nonce, data, counter = 1) {
+    const r32 = (b, o) => b[o] | (b[o + 1] << 8) | (b[o + 2] << 16) | (b[o + 3] << 24);
+    const s = new Int32Array(16);
+    s[0] = 0x61707865; s[1] = 0x3320646e; s[2] = 0x79622d32; s[3] = 0x6b206574;
+    for (let i = 0; i < 8; i++) s[4 + i] = r32(key, i * 4);
+    s[12] = counter; s[13] = r32(nonce, 0); s[14] = r32(nonce, 4); s[15] = r32(nonce, 8);
+    const x = new Int32Array(16), ks = new Uint8Array(64), out = new Uint8Array(data.length);
+    const rotl = (v, c) => (v << c) | (v >>> (32 - c));
+    const qr = (a, b, c, d) => {
+      x[a] = (x[a] + x[b]) | 0; x[d] = rotl(x[d] ^ x[a], 16);
+      x[c] = (x[c] + x[d]) | 0; x[b] = rotl(x[b] ^ x[c], 12);
+      x[a] = (x[a] + x[b]) | 0; x[d] = rotl(x[d] ^ x[a], 8);
+      x[c] = (x[c] + x[d]) | 0; x[b] = rotl(x[b] ^ x[c], 7);
+    };
+    for (let o = 0; o < data.length; o += 64) {
+      x.set(s);
+      for (let i = 0; i < 10; i++) {
+        qr(0, 4, 8, 12); qr(1, 5, 9, 13); qr(2, 6, 10, 14); qr(3, 7, 11, 15);
+        qr(0, 5, 10, 15); qr(1, 6, 11, 12); qr(2, 7, 8, 13); qr(3, 4, 9, 14);
+      }
+      for (let i = 0; i < 16; i++) {
+        const v = (x[i] + s[i]) | 0;
+        ks[i * 4] = v & 255; ks[i * 4 + 1] = (v >>> 8) & 255; ks[i * 4 + 2] = (v >>> 16) & 255; ks[i * 4 + 3] = (v >>> 24) & 255;
+      }
+      for (let i = 0; i < 64 && o + i < data.length; i++) out[o + i] = data[o + i] ^ ks[i];
+      s[12] = (s[12] + 1) | 0;
+    }
+    return out;
+  }
+
+  const b64 = {
+    enc(u8) { let s = ''; for (let i = 0; i < u8.length; i++) s += String.fromCharCode(u8[i]); return btoa(s); },
+    dec(str) { const s = atob(str); const u = new Uint8Array(s.length); for (let i = 0; i < s.length; i++) u[i] = s.charCodeAt(i); return u; }
+  };
+  const te = new TextEncoder(), td = new TextDecoder();
+  const ITERS = 200000;
+
+  function rand(n) { const u = new Uint8Array(n); crypto.getRandomValues(u); return u; }
+
+  function sameBytes(a, b) {
+    if (a.length !== b.length) return false;
+    let d = 0; for (let i = 0; i < a.length; i++) d |= a[i] ^ b[i];
+    return d === 0;
+  }
+
+  async function seal(obj, pin) {
+    const salt = rand(16), nonce = rand(12);
+    const dk = await pbkdf2(te.encode(pin), salt, ITERS, 64);
+    const ct = chacha20(dk.subarray(0, 32), nonce, te.encode(JSON.stringify(obj)));
+    const tag = hmac(dk.subarray(32), concat(nonce, ct));
+    return 'PIN1.' + b64.enc(te.encode(JSON.stringify({ i: ITERS, l: pin.length, s: b64.enc(salt), n: b64.enc(nonce), c: b64.enc(ct), t: b64.enc(tag) })));
+  }
+
+  function parse(code) {
+    code = String(code || '').trim().replace(/\s+/g, '');
+    if (!code.startsWith('PIN1.')) throw new Error('format');
+    return JSON.parse(td.decode(b64.dec(code.slice(5))));
+  }
+
+  async function open(code, pin) {
+    const p = typeof code === 'string' ? parse(code) : code;
+    const salt = b64.dec(p.s), nonce = b64.dec(p.n), ct = b64.dec(p.c), tag = b64.dec(p.t);
+    const dk = await pbkdf2(te.encode(pin), salt, p.i, 64);
+    if (!sameBytes(hmac(dk.subarray(32), concat(nonce, ct)), tag)) return null;
+    return JSON.parse(td.decode(chacha20(dk.subarray(0, 32), nonce, ct)));
+  }
+
+  return { seal, open, parse, sha256, hmac, pbkdf2js, chacha20, b64 };
+})();
+if (typeof module !== 'undefined') module.exports = PinCrypto;
+
+</script>
+<script>
+// Codi xifrat amb el PIN. Si és null, el widget s'obre en mode configuració.
+// El codi xifrat va a l'enllaç, després de #c= . El que va després de # no s'envia a cap servidor:
+// només el llegeix el navegador. Aquest fitxer no porta cap dada; les dades viuen a l'enllaç que tens a Notion.
+const DATA = (() => { const m = location.hash.match(/[#&]c=([^&]+)/); try { return m ? decodeURIComponent(m[1]) : null; } catch (e) { return null; } })();
+const BASE = location.href.split('#')[0];
+window.addEventListener('hashchange', () => location.reload());
+
+const DEFAULT_ITEMS = [
+  { s: 'Correu XTEC', u: 'cfondev2@xtec.cat', p: '', n: '' },
+  { s: 'Correu institut', u: 'cfondevila@inscaparrella.cat', p: '', n: '' },
+  { s: 'GICAR (ATRI, Esfer@)', u: '', p: '', n: '' },
+  { s: 'Moodle', u: '', p: '', n: '' },
+  { s: 'iEduca', u: '', p: '', n: '' },
+  { s: 'Wi-Fi centre', u: '', p: '', n: '' }
+];
+const AUTOLOCK_MS = 2 * 60 * 1000;
+
+const app = document.getElementById('app');
+let meta = null;          // capçalera del codi (sense secrets)
+let vault = null;         // dades desxifrades mentre està obert
+let pin = '';
+let fails = 0, busyUntil = 0, idleTimer = null;
+
+try { meta = DATA ? PinCrypto.parse(DATA) : null; } catch (e) { meta = null; }
+
+function el(tag, attrs = {}, ...kids) {
+  const e = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs)) {
+    if (k === 'class') e.className = v;
+    else if (k.startsWith('on')) e.addEventListener(k.slice(2), v);
+    else if (v !== undefined && v !== null && v !== false) e.setAttribute(k, v === true ? '' : v);
+  }
+  for (const k of kids.flat()) if (k !== null && k !== undefined && k !== false) e.append(k.nodeType ? k : document.createTextNode(k));
+  return e;
+}
+
+let toastT;
+function toast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('on');
+  clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove('on'), 1600);
+}
+
+async function copy(text) {
+  try { await navigator.clipboard.writeText(text); return true; } catch (e) {}
+  try {
+    const ta = el('textarea', { readonly: true, style: 'position:fixed;top:0;left:0;opacity:0' });
+    ta.value = text; document.body.append(ta); ta.focus(); ta.select(); ta.setSelectionRange(0, text.length);
+    const ok = document.execCommand('copy'); ta.remove(); return ok;
+  } catch (e) { return false; }
+}
+
+function header(title, right) {
+  return el('div', { class: 'head' }, el('div', { class: 'title' }, title), right || null);
+}
+
+// ---------- Bloquejat ----------
+function renderLock(msg, isErr) {
+  vault = null; pin = ''; stopIdle();
+  const len = meta.l || 0;
+  const dots = el('div', { class: 'dots', 'aria-hidden': 'true' });
+  const status = el('div', { class: 'status' + (isErr ? ' err' : ''), role: 'status', 'aria-live': 'polite' }, msg || '');
+  const pad = el('div', { class: 'pad' });
+  const paint = () => {
+    dots.replaceChildren();
+    const n = len || Math.max(4, pin.length);
+    for (let i = 0; i < n; i++) dots.append(el('span', { class: 'dot' + (i < pin.length ? ' on' : '') }));
+  };
+  const press = d => {
+    if (Date.now() < busyUntil || pad.classList.contains('busy')) return;
+    if (pin.length >= 8) return;
+    pin += d; paint();
+    if (len && pin.length === len) submit();
+  };
+  const back = () => { pin = pin.slice(0, -1); paint(); };
+  async function submit() {
+    if (!pin) return;
+    pad.classList.add('busy'); status.className = 'status'; status.textContent = 'Comprovant…';
+    let res = null;
+    try { res = await PinCrypto.open(DATA, pin); } catch (e) { res = null; }
+    if (res) { fails = 0; vault = res; renderOpen(); return; }
+    fails++; pin = '';
+    dots.classList.remove('shake'); void dots.offsetWidth; dots.classList.add('shake'); paint();
+    const wait = fails >= 3 ? Math.min(60, 5 * 2 ** (fails - 3)) : 0;
+    status.className = 'status err';
+    if (wait) {
+      busyUntil = Date.now() + wait * 1000;
+      const tick = () => {
+        const left = Math.ceil((busyUntil - Date.now()) / 1000);
+        if (left > 0) { status.textContent = `PIN incorrecte. Espera ${left} s`; setTimeout(tick, 250); }
+        else { status.textContent = 'Torna-ho a provar'; pad.classList.remove('busy'); }
+      };
+      tick();
+    } else { status.textContent = 'PIN incorrecte'; pad.classList.remove('busy'); }
+  }
+  for (const d of ['1', '2', '3', '4', '5', '6', '7', '8', '9']) pad.append(el('button', { class: 'key', type: 'button', 'aria-label': d, onclick: () => press(d) }, d));
+  pad.append(el('button', { class: 'key fn', type: 'button', 'aria-label': 'Esborrar', onclick: back }, '⌫'));
+  pad.append(el('button', { class: 'key', type: 'button', 'aria-label': '0', onclick: () => press('0') }, '0'));
+  pad.append(el('button', { class: 'key fn', type: 'button', 'aria-label': 'Obrir', onclick: submit }, len ? '' : 'OK'));
+  document.onkeydown = e => {
+    if (/^[0-9]$/.test(e.key)) press(e.key);
+    else if (e.key === 'Backspace') back();
+    else if (e.key === 'Enter') submit();
+  };
+  const forgot = el('button', {
+    class: 'btn ghost small forgot', type: 'button', onclick: () => {
+      if (confirmBox.hidden) confirmBox.hidden = false; else confirmBox.hidden = true;
+    }
+  }, 'No recordes el PIN?');
+  const confirmBox = el('div', { class: 'small muted', hidden: true, style: 'max-width:280px;margin-top:6px' },
+    'Sense el PIN no es pot recuperar. Pots tornar a posar les contrasenyes amb un PIN nou. ',
+    el('button', { class: 'btn small', type: 'button', style: 'margin-top:8px', onclick: () => renderSetup(null) }, 'Configurar de nou'));
+  paint();
+  app.replaceChildren(
+    header('🔑 Contrasenyes'),
+    el('div', { class: 'lock' },
+      el('div', { class: 'muted small' }, 'Escriu el PIN'),
+      dots, status, pad, forgot, confirmBox)
+  );
+}
+
+// ---------- Obert ----------
+function renderOpen() {
+  document.onkeydown = null;
+  const list = el('div', { class: 'list' });
+  for (const it of vault.items) {
+    const card = el('div', { class: 'card' }, el('h3', {}, it.s || 'Sense nom'));
+    if (it.u) {
+      card.append(el('div', { class: 'row' },
+        el('span', { class: 'lbl' }, 'Usuari'),
+        el('span', { class: 'val' }, it.u),
+        el('button', { class: 'mini', type: 'button', onclick: async () => toast(await copy(it.u) ? 'Usuari copiat' : 'Selecciona\'l i copia\'l') }, 'Copia')));
+    }
+    if (it.p) {
+      const val = el('span', { class: 'val hidden' }, '••••••••');
+      let shown = false;
+      const eye = el('button', {
+        class: 'mini', type: 'button', onclick: () => {
+          shown = !shown; val.textContent = shown ? it.p : '••••••••';
+          val.classList.toggle('hidden', !shown); eye.textContent = shown ? 'Amaga' : 'Mostra';
+        }
+      }, 'Mostra');
+      card.append(el('div', { class: 'row' },
+        el('span', { class: 'lbl' }, 'Contrasenya'), val, eye,
+        el('button', {
+          class: 'mini', type: 'button', onclick: async () => {
+            if (await copy(it.p)) toast('Contrasenya copiada');
+            else { if (!shown) eye.click(); toast('Mantén premut per copiar-la'); }
+          }
+        }, 'Copia')));
+    } else if (!it.u) {
+      card.append(el('div', { class: 'note' }, 'Encara sense dades'));
+    }
+    if (it.n) card.append(el('div', { class: 'note' }, it.n));
+    list.append(card);
+  }
+  const foot = el('div', { class: 'foot' });
+  const left = el('div', { class: 'small muted' });
+  if (vault.d) {
+    const d = new Date(vault.d);
+    const days = Math.floor((Date.now() - d.getTime()) / 86400000);
+    left.append('Actualitzat el ' + d.toLocaleDateString('ca-ES') + ' ');
+    if (days > 180) left.append(el('span', { class: 'badge' }, 'Fa més de 6 mesos: toca renovar'));
+  }
+  foot.append(left, el('button', { class: 'btn ghost small', type: 'button', onclick: () => renderSetup(vault.items) }, '✏️ Editar'));
+  app.replaceChildren(
+    header('🔓 Contrasenyes', el('button', { class: 'btn', type: 'button', onclick: () => renderLock() }, '🔒 Bloqueja')),
+    list, foot,
+    el('div', { class: 'small muted', style: 'margin-top:6px' }, 'Es bloqueja sol als 2 minuts sense tocar res.')
+  );
+  startIdle();
+}
+
+function startIdle() {
+  stopIdle();
+  const reset = () => { clearTimeout(idleTimer); idleTimer = setTimeout(() => { if (vault) renderLock('Bloquejat per inactivitat'); }, AUTOLOCK_MS); };
+  reset();
+  startIdle.reset = reset;
+  for (const ev of ['pointerdown', 'keydown', 'scroll', 'touchstart']) window.addEventListener(ev, reset, { passive: true });
+}
+function stopIdle() {
+  clearTimeout(idleTimer);
+  if (startIdle.reset) for (const ev of ['pointerdown', 'keydown', 'scroll', 'touchstart']) window.removeEventListener(ev, startIdle.reset);
+}
+document.addEventListener('visibilitychange', () => { if (document.hidden && vault) renderLock(); });
+
+// ---------- Configuració ----------
+function renderSetup(items) {
+  document.onkeydown = null; stopIdle();
+  const editing = !!items;
+  const rows = el('div');
+  const addRow = (it = { s: '', u: '', p: '', n: '' }) => {
+    const svc = el('input', { type: 'text', class: 'svc', placeholder: 'Servei (p. ex. Correu XTEC)', value: it.s, autocomplete: 'off' });
+    const usr = el('input', { type: 'text', placeholder: 'Usuari', value: it.u, autocomplete: 'off', autocapitalize: 'off', spellcheck: 'false' });
+    const pwd = el('input', { type: 'password', placeholder: 'Contrasenya', value: it.p, autocomplete: 'new-password' });
+    const note = el('input', { type: 'text', placeholder: 'Nota (opcional)', value: it.n || '', autocomplete: 'off' });
+    const eye = el('button', { class: 'mini', type: 'button', onclick: () => { pwd.type = pwd.type === 'password' ? 'text' : 'password'; eye.textContent = pwd.type === 'password' ? 'Mostra' : 'Amaga'; } }, 'Mostra');
+    const row = el('div', { class: 'erow' },
+      el('div', { class: 'fields' }, svc, usr, el('div', { class: 'pw' }, pwd, eye), note),
+      el('button', { class: 'x', type: 'button', title: 'Treure', 'aria-label': 'Treure', onclick: () => row.remove() }, '×'));
+    row._get = () => ({ s: svc.value.trim(), u: usr.value.trim(), p: pwd.value, n: note.value.trim() });
+    rows.append(row);
+  };
+  (items || DEFAULT_ITEMS).forEach(it => addRow({ ...it }));
+
+  const pin1 = el('input', { class: 'pin', type: 'password', inputmode: 'numeric', pattern: '[0-9]*', maxlength: '8', autocomplete: 'off', placeholder: '••••' });
+  const pin2 = el('input', { class: 'pin', type: 'password', inputmode: 'numeric', pattern: '[0-9]*', maxlength: '8', autocomplete: 'off', placeholder: '••••' });
+  const msg = el('div', { class: 'status', role: 'status', 'aria-live': 'polite' });
+  const out = el('div');
+  const go = el('button', {
+    class: 'btn primary', type: 'button', onclick: async () => {
+      const a = pin1.value.trim(), b = pin2.value.trim();
+      msg.className = 'status err';
+      if (!/^[0-9]{4,8}$/.test(a)) { msg.textContent = 'El PIN ha de tenir entre 4 i 8 xifres.'; return; }
+      if (a !== b) { msg.textContent = 'Els dos PIN no coincideixen.'; return; }
+      const list = [...rows.children].map(r => r._get()).filter(x => x.s || x.u || x.p);
+      if (!list.length) { msg.textContent = 'Afegeix com a mínim un servei.'; return; }
+      go.disabled = true; msg.className = 'status'; msg.textContent = 'Xifrant…';
+      const code = await PinCrypto.seal({ items: list, d: new Date().toISOString() }, a);
+      // Comprovació: el codi s'obre amb el mateix PIN
+      const back = await PinCrypto.open(code, a);
+      go.disabled = false;
+      if (!back) { msg.className = 'status err'; msg.textContent = 'Alguna cosa ha fallat. Torna-ho a provar.'; return; }
+      msg.textContent = '';
+      pin1.value = pin2.value = '';
+      const link = BASE + '#c=' + encodeURIComponent(code);
+      const ta = el('textarea', { readonly: true, 'aria-label': 'Enllaç nou amb les dades xifrades' }); ta.value = link;
+      out.replaceChildren(el('div', { class: 'result' },
+        el('p', {}, el('b', {}, 'Fet. '), 'Aquest és l\'enllaç nou del widget, amb les contrasenyes xifrades a dins. Posa\'l a Notion en lloc de l\'antic: esborra el widget vell, escriu /embed i enganxa l\'enllaç. Sense el PIN no es pot llegir; el PIN no el comparteixis mai.'),
+        ta,
+        el('div', { class: 'actions' },
+          el('button', { class: 'btn primary', type: 'button', onclick: async () => { if (await copy(link)) toast('Enllaç copiat'); else { ta.focus(); ta.select(); toast('Selecciona\'l i copia\'l'); } } }, 'Copia l\'enllaç'),
+          el('button', { class: 'btn', type: 'button', title: 'Obre el widget nou aquí mateix per comprovar el PIN', onclick: () => { location.hash = 'c=' + encodeURIComponent(code); } }, 'Prova\'l aquí'))));
+      out.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+  }, '🔒 Xifra i genera el codi');
+
+  app.replaceChildren(
+    header(editing ? '✏️ Editar contrasenyes' : '🔑 Configurar contrasenyes',
+      editing || meta ? el('button', { class: 'btn ghost', type: 'button', onclick: () => editing ? renderOpen() : renderLock() }, 'Cancel·la') : null),
+    el('p', { class: 'intro' }, 'Escriu aquí les contrasenyes i tria un PIN de números. Es xifra tot en aquesta pantalla; no s\'envia enlloc.'),
+    rows,
+    el('button', { class: 'btn small', type: 'button', onclick: () => addRow() }, '+ Afegeix un servei'),
+    el('div', { class: 'pins' },
+      el('label', {}, 'PIN (4 a 8 xifres)', pin1),
+      el('label', {}, 'Repeteix el PIN', pin2)),
+    msg,
+    el('div', { class: 'actions' }, go),
+    out
+  );
+}
+
+if (meta) renderLock(); else renderSetup(null);
+</script>
+</body>
+</html>
