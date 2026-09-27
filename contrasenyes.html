@@ -46,6 +46,10 @@ button:focus-visible, input:focus-visible, textarea:focus-visible { outline: 2px
 .key:active { background: var(--surface2); }
 .key.fn { background: none; font-size: 15px; color: var(--muted); }
 .pad.busy { opacity: .45; pointer-events: none; }
+.pad[hidden] { display: none; }
+.lock input.pinlock { width: 190px; text-align: center; letter-spacing: 10px; font-size: 22px; padding: 9px 10px; margin: 12px 0 2px; }
+.lock input.pinlock::placeholder { letter-spacing: 2px; font-size: 15px; }
+.lock input.pinlock:disabled { opacity: .5; }
 .forgot { margin-top: 14px; }
 
 /* Llista */
@@ -348,21 +352,28 @@ function renderLock(msg, isErr) {
   const dots = el('div', { class: 'dots', 'aria-hidden': 'true' });
   const status = el('div', { class: 'status' + (isErr ? ' err' : ''), role: 'status', 'aria-live': 'polite' }, msg || '');
   const pad = el('div', { class: 'pad' });
+  // El PIN s'escriu amb el teclat de l'ordinador (o el numèric del mòbil). El teclat en pantalla queda amagat,
+  // perquè ningú vegi quins números es premen amb el ratolí; es pot mostrar si cal.
+  const inp = el('input', { class: 'pin pinlock', type: 'password', inputmode: 'numeric', pattern: '[0-9]*', autocomplete: 'off',
+    maxlength: String(len || 8), 'aria-label': 'PIN', placeholder: 'PIN' });
+  const busy = () => Date.now() < busyUntil || pad.classList.contains('busy');
   const paint = () => {
     dots.replaceChildren();
     const n = len || Math.max(4, pin.length);
     for (let i = 0; i < n; i++) dots.append(el('span', { class: 'dot' + (i < pin.length ? ' on' : '') }));
+    if (inp.value !== pin) inp.value = pin;
   };
   const press = d => {
-    if (Date.now() < busyUntil || pad.classList.contains('busy')) return;
+    if (busy()) return;
     if (pin.length >= 8) return;
     pin += d; paint();
     if (len && pin.length === len) submit();
   };
   const back = () => { pin = pin.slice(0, -1); paint(); };
+  const lockInput = on => { inp.disabled = on; if (!on) { try { inp.focus(); } catch (e) {} } };
   async function submit() {
-    if (!pin) return;
-    pad.classList.add('busy'); status.className = 'status'; status.textContent = 'Comprovant…';
+    if (!pin || pad.classList.contains('busy')) return;
+    pad.classList.add('busy'); lockInput(true); status.className = 'status'; status.textContent = 'Comprovant…';
     let res = null;
     try { res = await PinCrypto.open(DATA, pin); } catch (e) { res = null; }
     if (res) { fails = 0; vault = res; renderOpen(); return; }
@@ -375,20 +386,35 @@ function renderLock(msg, isErr) {
       const tick = () => {
         const left = Math.ceil((busyUntil - Date.now()) / 1000);
         if (left > 0) { status.textContent = `PIN incorrecte. Espera ${left} s`; setTimeout(tick, 250); }
-        else { status.textContent = 'Torna-ho a provar'; pad.classList.remove('busy'); }
+        else { status.textContent = 'Torna-ho a provar'; pad.classList.remove('busy'); lockInput(false); }
       };
       tick();
-    } else { status.textContent = 'PIN incorrecte'; pad.classList.remove('busy'); }
+    } else { status.textContent = 'PIN incorrecte'; pad.classList.remove('busy'); lockInput(false); }
   }
+  inp.addEventListener('input', () => {
+    if (busy()) { inp.value = pin; return; }
+    pin = inp.value.replace(/\D/g, '').slice(0, 8); paint();
+    if (len && pin.length === len) submit();
+  });
+  inp.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); submit(); } });
   for (const d of ['1', '2', '3', '4', '5', '6', '7', '8', '9']) pad.append(el('button', { class: 'key', type: 'button', 'aria-label': d, onclick: () => press(d) }, d));
   pad.append(el('button', { class: 'key fn', type: 'button', 'aria-label': 'Esborrar', onclick: back }, '⌫'));
   pad.append(el('button', { class: 'key', type: 'button', 'aria-label': '0', onclick: () => press('0') }, '0'));
   pad.append(el('button', { class: 'key fn', type: 'button', 'aria-label': 'Obrir', onclick: submit }, len ? '' : 'OK'));
+  // Si s'escriu un número amb el focus a qualsevol altre lloc del widget, va a la casella del PIN
   document.onkeydown = e => {
-    if (/^[0-9]$/.test(e.key)) press(e.key);
+    if (e.target === inp) return;
+    if (/^[0-9]$/.test(e.key)) { e.preventDefault(); try { inp.focus(); } catch (x) {} press(e.key); }
     else if (e.key === 'Backspace') back();
     else if (e.key === 'Enter') submit();
   };
+  const PADKEY = 'contrasenyes-teclat';
+  let showPad = false; try { showPad = localStorage.getItem(PADKEY) === '1'; } catch (e) {}
+  pad.hidden = !showPad;
+  const padBtn = el('button', { class: 'btn ghost small', type: 'button' });
+  const paintPadBtn = () => { padBtn.textContent = pad.hidden ? '🔢 Teclat en pantalla' : 'Amaga el teclat en pantalla'; };
+  padBtn.onclick = () => { pad.hidden = !pad.hidden; try { localStorage.setItem(PADKEY, pad.hidden ? '0' : '1'); } catch (e) {} paintPadBtn(); if (pad.hidden) { try { inp.focus(); } catch (e) {} } };
+  paintPadBtn();
   const forgot = el('button', {
     class: 'btn ghost small forgot', type: 'button', onclick: () => {
       if (confirmBox.hidden) confirmBox.hidden = false; else confirmBox.hidden = true;
@@ -401,9 +427,10 @@ function renderLock(msg, isErr) {
   app.replaceChildren(
     header('🔑 Contrasenyes'),
     el('div', { class: 'lock' },
-      el('div', { class: 'muted small' }, 'Escriu el PIN'),
-      dots, status, pad, forgot, confirmBox)
+      el('div', { class: 'muted small' }, 'Fes clic a la casella i escriu el PIN amb el teclat'),
+      inp, dots, status, pad, padBtn, forgot, confirmBox)
   );
+  try { inp.focus(); } catch (e) {}
 }
 
 // ---------- Obert ----------
