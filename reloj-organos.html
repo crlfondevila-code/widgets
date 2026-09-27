@@ -1,0 +1,173 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Reloj de órganos</title>
+<style>
+:root {
+  --bg:#fff; --text:#37352f; --muted:#787774; --line:#e9e9e7; --chip:#f1f1ef;
+  --wood:#4f9a5f; --fire:#d9573f; --earth:#c99a2e; --metal:#8e9aa6; --water:#3f6fb0;
+}
+@media (prefers-color-scheme: dark) {
+  :root { --bg:#191919; --text:#e8e7e4; --muted:#9b9a97; --line:#303030; --chip:#262626;
+    --wood:#6cc07d; --fire:#f07a61; --earth:#e2b64a; --metal:#aeb9c4; --water:#6f9be0; }
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; background: var(--bg); color: var(--text); }
+body { font: 14px/1.4 ui-sans-serif, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; -webkit-font-smoothing: antialiased; }
+.wrap { padding: 12px; display: grid; gap: 12px; grid-template-columns: 1fr; align-items: center; }
+@media (min-width: 540px) { .wrap { grid-template-columns: minmax(240px, 300px) 1fr; } }
+.top { grid-column: 1 / -1; display: flex; justify-content: space-between; align-items: center; }
+.top b { font-size: 14px; }
+.toggle { display: inline-flex; background: var(--chip); border-radius: 999px; padding: 2px; font-size: 12px; }
+.toggle button { white-space: nowrap; border: 0; background: none; color: var(--muted); padding: 4px 10px; border-radius: 999px; cursor: pointer; font: inherit; }
+.toggle button.on { background: var(--bg); color: var(--text); box-shadow: 0 0 0 1px var(--line); }
+svg { width: 100%; max-width: 300px; height: auto; display: block; margin: 0 auto; }
+.seg { cursor: pointer; transition: opacity .2s; }
+.lbl { font-size: 13px; text-anchor: middle; dominant-baseline: central; fill: var(--text); pointer-events: none; }
+.lbl.han { font-size: 15px; font-weight: 600; }
+.hr { font-size: 8.5px; fill: var(--muted); text-anchor: middle; dominant-baseline: central; }
+.info h2 { margin: 0; font-size: 20px; display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+.info h2 .han { font-size: 24px; }
+.info .py { color: var(--muted); font-size: 13px; font-weight: 400; }
+.info .when { font-size: 12.5px; color: var(--muted); margin: 2px 0 10px; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+.chip { background: var(--chip); border-radius: 999px; padding: 3px 10px; font-size: 12px; }
+.chip i { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; vertical-align: 0; }
+.rows { font-size: 13px; display: grid; gap: 4px; }
+.rows span { color: var(--muted); }
+.back { margin-top: 10px; font-size: 12px; color: var(--muted); }
+.back button { border: 0; background: none; color: inherit; text-decoration: underline; cursor: pointer; font: inherit; padding: 0; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top"><b>☯️ Reloj de órganos</b>
+    <div class="toggle" role="group" aria-label="Hora civil u hora solar">
+      <button id="bCivil" class="on" type="button">Civil</button><button id="bSolar" type="button">Solar</button>
+    </div>
+  </div>
+  <svg id="dial" viewBox="-160 -160 320 320" aria-label="Reloj de órganos de 24 horas"></svg>
+  <div class="info" id="info" aria-live="polite"></div>
+</div>
+<script>
+// Doce meridianos: inicio de su franja de máxima energía (hora), en orden.
+const M = [
+  { h: 23, es: 'Vesícula biliar', han: '胆', py: 'Dǎn', el: 'wood', yy: 'Yang', pair: 'Hígado', br: '子 Zǐ' },
+  { h: 1,  es: 'Hígado',          han: '肝', py: 'Gān', el: 'wood', yy: 'Yin',  pair: 'Vesícula biliar', br: '丑 Chǒu' },
+  { h: 3,  es: 'Pulmón',          han: '肺', py: 'Fèi', el: 'metal', yy: 'Yin', pair: 'Intestino grueso', br: '寅 Yín' },
+  { h: 5,  es: 'Intestino grueso', han: '大肠', py: 'Dàcháng', el: 'metal', yy: 'Yang', pair: 'Pulmón', br: '卯 Mǎo' },
+  { h: 7,  es: 'Estómago',        han: '胃', py: 'Wèi', el: 'earth', yy: 'Yang', pair: 'Bazo', br: '辰 Chén' },
+  { h: 9,  es: 'Bazo',            han: '脾', py: 'Pí', el: 'earth', yy: 'Yin', pair: 'Estómago', br: '巳 Sì' },
+  { h: 11, es: 'Corazón',         han: '心', py: 'Xīn', el: 'fire', yy: 'Yin', pair: 'Intestino delgado', br: '午 Wǔ' },
+  { h: 13, es: 'Intestino delgado', han: '小肠', py: 'Xiǎocháng', el: 'fire', yy: 'Yang', pair: 'Corazón', br: '未 Wèi' },
+  { h: 15, es: 'Vejiga',          han: '膀胱', py: 'Pángguāng', el: 'water', yy: 'Yang', pair: 'Riñón', br: '申 Shēn' },
+  { h: 17, es: 'Riñón',           han: '肾', py: 'Shèn', el: 'water', yy: 'Yin', pair: 'Vejiga', br: '酉 Yǒu' },
+  { h: 19, es: 'Pericardio',      han: '心包', py: 'Xīnbāo', el: 'fire', yy: 'Yin', pair: 'Sanjiao', br: '戌 Xū' },
+  { h: 21, es: 'Sanjiao (Triple calentador)', han: '三焦', py: 'Sānjiāo', el: 'fire', yy: 'Yang', pair: 'Pericardio', br: '亥 Hài' }
+];
+const EL = {
+  wood:  { es: 'Madera', emo: 'ira', col: 'var(--wood)' },
+  fire:  { es: 'Fuego', emo: 'alegría', col: 'var(--fire)' },
+  earth: { es: 'Tierra', emo: 'preocupación', col: 'var(--earth)' },
+  metal: { es: 'Metal', emo: 'tristeza', col: 'var(--metal)' },
+  water: { es: 'Agua', emo: 'miedo', col: 'var(--water)' }
+};
+// Longitud para la hora solar: #lon=… en el enlace (por defecto, Lleida)
+const HP = new URLSearchParams(location.hash.slice(1));
+const LON = isNaN(parseFloat(HP.get('lon'))) ? 0.62 : parseFloat(HP.get('lon'));
+let solar = false, picked = null;
+const NS = 'http://www.w3.org/2000/svg';
+const dial = document.getElementById('dial'), info = document.getElementById('info');
+
+// hora (0–24) → ángulo en grados, 12:00 arriba y 0:00 abajo, sentido horario
+const ang = h => (h / 24) * 360 + 180;
+const pt = (h, r) => { const a = (ang(h) - 90) * Math.PI / 180; return [r * Math.cos(a), r * Math.sin(a)]; };
+function mk(tag, attrs, parent) { const e = document.createElementNS(NS, tag); for (const k in attrs) e.setAttribute(k, attrs[k]); (parent || dial).append(e); return e; }
+function arc(h0, h1, r0, r1) {
+  const [a, b] = pt(h0, r1), [c, d] = pt(h1, r1), [e, f] = pt(h1, r0), [g, k] = pt(h0, r0);
+  return `M${a} ${b} A${r1} ${r1} 0 0 1 ${c} ${d} L${e} ${f} A${r0} ${r0} 0 0 0 ${g} ${k}Z`;
+}
+
+const segs = [];
+function build() {
+  mk('circle', { r: 152, fill: 'none', stroke: 'var(--line)' });
+  M.forEach((m, i) => {
+    const s = mk('path', { d: arc(m.h, m.h + 2, 92, 148), fill: EL[m.el].col, class: 'seg', 'fill-opacity': .22, stroke: 'var(--bg)', 'stroke-width': 2 });
+    s.addEventListener('click', () => { picked = i; render(); });
+    const [x, y] = pt(m.h + 1, 124);
+    mk('text', { x, y: y - 7, class: 'lbl han' }).textContent = m.han;
+    mk('text', { x, y: y + 10, class: 'hr' }).textContent = String(m.h).padStart(2, '0') + '–' + String((m.h + 2) % 24).padStart(2, '0');
+    segs.push(s);
+  });
+  for (let h = 0; h < 24; h += 1) {
+    const [x0, y0] = pt(h, 86), [x1, y1] = pt(h, h % 6 ? 89 : 80);
+    mk('line', { x1: x0, y1: y0, x2: x1, y2: y1, stroke: 'var(--muted)', 'stroke-width': h % 6 ? 1 : 1.6 });
+  }
+  [['12', 12], ['18', 18], ['0', 0], ['6', 6]].forEach(([t, h]) => { const [x, y] = pt(h, 70); mk('text', { x, y, class: 'hr', style: 'font-size:10px' }).textContent = t; });
+  dial.hand = mk('line', { x1: 0, y1: 0, x2: 0, y2: -150, stroke: 'var(--text)', 'stroke-width': 2.2, 'stroke-linecap': 'round' });
+  mk('circle', { r: 5, fill: 'var(--text)' });
+  dial.center = mk('text', { x: 0, y: 30, class: 'hr', style: 'font-size:15px;font-weight:600;fill:var(--text)' });
+  dial.center2 = mk('text', { x: 0, y: 47, class: 'hr', style: 'font-size:10px' });
+}
+
+// Hora solar verdadera en Lleida: UTC + longitud + ecuación del tiempo
+function solarHours(d) {
+  const start = Date.UTC(d.getUTCFullYear(), 0, 0), n = Math.floor((d - start) / 86400000);
+  const B = 2 * Math.PI * (n - 81) / 364;
+  const eot = 9.87 * Math.sin(2 * B) - 7.53 * Math.cos(B) - 1.5 * Math.sin(B);
+  const mins = d.getUTCHours() * 60 + d.getUTCMinutes() + d.getUTCSeconds() / 60 + LON * 4 + eot;
+  return ((mins / 60) % 24 + 24) % 24;
+}
+const civilHours = d => d.getHours() + d.getMinutes() / 60 + d.getSeconds() / 3600;
+const idxAt = h => { for (let i = 0; i < 12; i++) { const s = M[i].h, e = s + 2; if (s === 23 ? (h >= 23 || h < 1) : (h >= s && h < e)) return i; } return 0; };
+const fmt = h => { const t = Math.floor(h * 60 + 1e-6); return String(Math.floor(t / 60) % 24).padStart(2, '0') + ':' + String(t % 60).padStart(2, '0'); };
+
+function render() {
+  const now = new Date();
+  const h = solar ? solarHours(now) : civilHours(now);
+  const cur = idxAt(h);
+  const show = picked == null ? cur : picked;
+  dial.hand.setAttribute('transform', `rotate(${ang(h)})`);
+  dial.center.textContent = fmt(h);
+  dial.center2.textContent = solar ? 'hora solar' : 'hora civil';
+  segs.forEach((s, i) => s.setAttribute('fill-opacity', i === show ? .95 : i === cur ? .55 : .22));
+  const m = M[show], opp = M[(show + 6) % 12], e = EL[m.el];
+  const end = String((m.h + 2) % 24).padStart(2, '0');
+  info.replaceChildren();
+  const h2 = document.createElement('h2');
+  h2.innerHTML = '';
+  const sHan = document.createElement('span'); sHan.className = 'han'; sHan.textContent = m.han;
+  const sName = document.createElement('span'); sName.textContent = m.es;
+  const sPy = document.createElement('span'); sPy.className = 'py'; sPy.textContent = m.py;
+  h2.append(sHan, sName, sPy);
+  const when = document.createElement('div'); when.className = 'when';
+  when.textContent = (show === cur ? 'Ahora en su máximo' : 'Máximo') + ' de ' + String(m.h).padStart(2, '0') + ':00 a ' + end + ':00 · rama ' + m.br;
+  const chips = document.createElement('div'); chips.className = 'chips';
+  const c1 = document.createElement('span'); c1.className = 'chip'; const dot = document.createElement('i'); dot.style.background = e.col; c1.append(dot, e.es);
+  const c2 = document.createElement('span'); c2.className = 'chip'; c2.textContent = m.yy;
+  const c3 = document.createElement('span'); c3.className = 'chip'; c3.textContent = 'Emoción: ' + e.emo;
+  chips.append(c1, c2, c3);
+  const rows = document.createElement('div'); rows.className = 'rows';
+  const r1 = document.createElement('div'); r1.innerHTML = '<span>Pareja:</span> '; r1.append(m.pair);
+  const r2 = document.createElement('div'); r2.innerHTML = '<span>En su mínimo a esta hora:</span> '; r2.append(opp.es + ' (' + opp.han + ')');
+  rows.append(r1, r2);
+  info.append(h2, when, chips, rows);
+  if (picked != null && picked !== cur) {
+    const b = document.createElement('div'); b.className = 'back';
+    const btn = document.createElement('button'); btn.type = 'button'; btn.textContent = 'Volver a la hora actual';
+    btn.onclick = () => { picked = null; render(); };
+    b.append(btn); info.append(b);
+  } else {
+    const b = document.createElement('div'); b.className = 'back'; b.textContent = 'Toca un sector para ver otro meridiano.'; info.append(b);
+  }
+}
+
+document.getElementById('bCivil').onclick = () => { solar = false; bCivil.classList.add('on'); bSolar.classList.remove('on'); render(); };
+document.getElementById('bSolar').onclick = () => { solar = true; bSolar.classList.add('on'); bCivil.classList.remove('on'); render(); };
+build(); render();
+setInterval(render, 20000);
+</script>
+</body>
+</html>

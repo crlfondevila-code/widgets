@@ -1,0 +1,259 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Poema del día</title>
+<style>
+:root { --bg:#fbfaf7; --card:#fff; --text:#2f2b26; --muted:#8a8378; --line:#e8e4dc; --accent:#9a3b2e; }
+@media (prefers-color-scheme: dark) { :root { --bg:#191919; --card:#212121; --text:#ece8e1; --muted:#9d978c; --line:#303030; --accent:#e08a74; } }
+* { box-sizing: border-box; }
+html, body { margin: 0; background: var(--bg); color: var(--text); }
+body { font: 14px/1.5 ui-sans-serif, -apple-system, "Segoe UI", Roboto, sans-serif; -webkit-font-smoothing: antialiased; }
+.wrap { max-width: 620px; margin: 0 auto; padding: 14px; }
+.top { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 10px; }
+.top b { font-size: 13px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
+.btns { display: flex; gap: 6px; }
+button { border: 1px solid var(--line); background: var(--card); color: var(--text); border-radius: 999px; padding: 4px 11px; font: inherit; font-size: 12.5px; cursor: pointer; }
+button:hover { border-color: var(--muted); }
+article { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 18px 20px 16px; }
+h1 { margin: 0; font: 600 21px/1.25 Georgia, "Iowan Old Style", "Palatino Linotype", serif; }
+.who { margin: 4px 0 14px; color: var(--accent); font-size: 13.5px; }
+.poem { font: 16.5px/1.6 Georgia, "Iowan Old Style", "Palatino Linotype", serif; white-space: pre-line; margin: 0; }
+.poem.prose { white-space: normal; }
+.poem.prose p { margin: 0 0 .8em; }
+.note { margin-top: 14px; padding-top: 10px; border-top: 1px solid var(--line); font-size: 12px; color: var(--muted); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top"><b>Poema del día</b>
+    <div class="btns"><button type="button" id="today">Hoy</button><button type="button" id="other">Otro ↻</button></div>
+  </div>
+  <article aria-live="polite">
+    <h1 id="t"></h1>
+    <div class="who" id="a"></div>
+    <div class="poem" id="p"></div>
+    <div class="note" id="n"></div>
+  </article>
+</div>
+<script>
+// Poemas de dominio público. Las traducciones al castellano son propias (T); los originales en castellano van tal cual (O).
+const POEMS = [
+  { t: 'Bebiendo solo bajo la luna', a: 'Li Bai (701–762)', k: 'T', from: 'chino',
+    p: `Entre las flores, una jarra de vino;
+bebo solo, sin nadie cerca.
+Alzo la copa e invito a la luna clara;
+con mi sombra, ya somos tres.
+Pero la luna no sabe beber
+y mi sombra solo imita mi cuerpo.
+Por un rato, luna y sombra me acompañan:
+hay que gozar mientras dure la primavera.
+Yo canto y la luna se demora;
+yo bailo y mi sombra se desordena.
+Despiertos, compartimos la alegría;
+borrachos, cada uno se va por su lado.
+Sellemos para siempre esta amistad sin ataduras
+y citémonos lejos, en el Río de las Estrellas.` },
+  { t: 'Pensamiento en una noche tranquila', a: 'Li Bai (701–762)', k: 'T', from: 'chino',
+    p: `Ante mi cama, la luz de la luna:
+parece escarcha sobre el suelo.
+Alzo la cabeza y miro la luna;
+bajo la cabeza y pienso en mi tierra.` },
+  { t: 'El cercado de los ciervos', a: 'Wang Wei (699–759)', k: 'T', from: 'chino',
+    p: `Montaña vacía: no se ve a nadie,
+solo se oye el eco de unas voces.
+La luz del ocaso entra en el bosque hondo
+y vuelve a brillar sobre el musgo verde.` },
+  { t: 'Dos haikus', a: 'Matsuo Bashō (1644–1694)', k: 'T', from: 'japonés',
+    p: `Un viejo estanque.
+Salta una rana:
+el sonido del agua.
+
+Enfermo de viaje,
+mis sueños vagan
+por campos secos.` },
+  { t: 'Haiku', a: 'Ryōkan (1758–1831)', k: 'T', from: 'japonés',
+    p: `El ladrón
+se la dejó olvidada:
+la luna en la ventana.` },
+  { t: 'Dos cuartetas del Rubaiyat', a: 'Omar Jayam, en la versión inglesa de Edward FitzGerald (1859)', k: 'T', from: 'inglés',
+    p: `Aquí, con una hogaza de pan bajo la rama,
+un frasco de vino, un libro de versos… y tú
+a mi lado cantando en el desierto…
+y el desierto ya es paraíso bastante.
+
+El dedo que escribe escribe y, una vez escrito,
+sigue adelante: ni toda tu piedad ni tu ingenio
+lograrán que vuelva a tachar media línea,
+ni todas tus lágrimas borrarán una sola palabra.` },
+  { t: 'Odio y amo', a: 'Catulo, poema 85 (s. I a. C.)', k: 'T', from: 'latín',
+    p: `Odio y amo. Quizá me preguntes por qué lo hago.
+No lo sé, pero siento que ocurre, y me atormenta.` },
+  { t: 'Vivamos, Lesbia mía', a: 'Catulo, poema 5 (s. I a. C.)', k: 'T', from: 'latín',
+    p: `Vivamos, Lesbia mía, y amemos,
+y que las habladurías de los viejos severos
+no nos valgan, todas juntas, ni un céntimo.
+Los soles pueden ponerse y volver;
+nosotros, cuando se nos apague de una vez la breve luz,
+tendremos que dormir una sola noche eterna.
+Dame mil besos, después cien,
+después otros mil, después otros cien,
+después otros mil más, después cien.
+Y cuando hayamos sumado muchos miles,
+los revolveremos para perder la cuenta,
+o para que ningún envidioso nos eche mal de ojo
+al saber que hay tantos besos.` },
+  { t: 'Cuarteta que hizo al ser condenado a la horca', a: 'François Villon (1431–c. 1463)', k: 'T', from: 'francés',
+    p: `Soy François, y eso me pesa,
+nacido en París, cerca de Pontoise;
+y con una cuerda de una braza
+sabrá mi cuello lo que pesa mi culo.` },
+  { t: 'Embriagaos', a: 'Charles Baudelaire, El spleen de París (1869)', k: 'T', from: 'francés', prose: true,
+    p: `Hay que estar siempre borracho. Todo consiste en eso: es la única cuestión. Para no sentir el horrible peso del Tiempo, que os rompe los hombros y os dobla hacia la tierra, tenéis que embriagaros sin tregua.
+Pero ¿de qué? De vino, de poesía o de virtud, como queráis. Pero embriagaos.
+Y si alguna vez, en las escaleras de un palacio, sobre la hierba verde de una cuneta, en la soledad triste de vuestro cuarto, os despertáis con la embriaguez ya menguada o desaparecida, preguntad al viento, a la ola, a la estrella, al pájaro, al reloj, a todo lo que huye, a todo lo que gime, a todo lo que rueda, a todo lo que canta, a todo lo que habla, preguntad qué hora es; y el viento, la ola, la estrella, el pájaro, el reloj os responderán: «¡Es la hora de embriagarse! Para no ser los esclavos martirizados del Tiempo, embriagaos, ¡embriagaos sin cesar! De vino, de poesía o de virtud, como queráis».` },
+  { t: 'Mi bohemia', a: 'Arthur Rimbaud (1870)', k: 'T', from: 'francés',
+    p: `Me iba, con los puños en los bolsillos rotos;
+mi abrigo también se volvía ideal;
+iba bajo el cielo, ¡Musa!, y era tu vasallo;
+¡ay, ay, ay, qué amores espléndidos soñé!
+
+Mi único pantalón tenía un gran agujero.
+—Pulgarcito soñador, iba desgranando rimas
+por el camino. Mi posada era la Osa Mayor.
+—Mis estrellas, en el cielo, hacían un suave frufrú,
+
+y yo las escuchaba, sentado al borde de los caminos,
+esas buenas noches de septiembre en que sentía gotas
+de rocío en la frente, como un vino que da fuerzas;
+
+cuando, rimando entre sombras fantásticas,
+como si fueran liras, tiraba de los cordones
+de mis zapatos heridos, con un pie junto al corazón.` },
+  { t: 'Canción de otoño', a: 'Paul Verlaine (1866)', k: 'T', from: 'francés',
+    p: `Los largos sollozos
+de los violines
+del otoño
+me hieren el corazón
+con una languidez
+monótona.
+
+Sin aliento
+y pálido, cuando
+suena la hora,
+me acuerdo
+de los días de antes
+y lloro;
+
+y me voy
+con el mal viento
+que me lleva
+de aquí para allá,
+igual que la
+hoja muerta.` },
+  { t: 'Cuando oí al sabio astrónomo', a: 'Walt Whitman (1865)', k: 'T', from: 'inglés',
+    p: `Cuando oí al sabio astrónomo,
+cuando las pruebas y las cifras se alinearon ante mí en columnas,
+cuando me enseñaron las cartas y los diagramas, para sumarlos, dividirlos y medirlos,
+cuando, sentado, oí al astrónomo dar su conferencia entre grandes aplausos en el aula,
+qué pronto, sin saber por qué, me sentí cansado y harto,
+hasta que me levanté, me escabullí y me fui a vagar solo
+por el aire húmedo y místico de la noche, y de vez en cuando
+alcé la vista, en perfecto silencio, hacia las estrellas.` },
+  { t: '¡No soy nadie! ¿Quién eres tú?', a: 'Emily Dickinson (c. 1861)', k: 'T', from: 'inglés',
+    p: `¡No soy nadie! ¿Quién eres tú?
+¿Tú también eres… nadie?
+¡Entonces ya somos dos!
+No lo digas: lo pregonarían, ¿sabes?
+
+¡Qué aburrido… ser… alguien!
+Qué público, como una rana,
+decir tu nombre todo el santo junio
+a una charca que te admira.` },
+  { t: 'La ciudad', a: 'Constantino Cavafis (1910)', k: 'T', from: 'griego',
+    p: `Dijiste: «Iré a otra tierra, iré a otro mar.
+Otra ciudad habrá mejor que esta.
+Cada esfuerzo mío es una condena escrita,
+y mi corazón está —como un muerto— enterrado.
+¿Hasta cuándo seguirá mi mente en este marasmo?
+Adonde vuelva los ojos, adonde mire,
+veo aquí las ruinas negras de mi vida,
+donde tantos años pasé, y destruí, y malgasté».
+
+No hallarás tierras nuevas, no hallarás otros mares.
+La ciudad te seguirá. Recorrerás
+las mismas calles. Y envejecerás
+en los mismos barrios, y en estas mismas casas encanecerás.
+Siempre llegarás a esta ciudad. A otra parte —no lo esperes—
+no hay barco para ti, no hay camino.
+Así como has destruido tu vida aquí,
+en este rincón pequeño, la has destruido en toda la tierra.` },
+  { t: 'Coplas por la muerte de su padre (III)', a: 'Jorge Manrique (c. 1476)', k: 'O',
+    p: `Nuestras vidas son los ríos
+que van a dar en la mar,
+que es el morir;
+allí van los señoríos
+derechos a se acabar
+y consumir;
+allí los ríos caudales,
+allí los otros medianos
+y más chicos,
+y llegados, son iguales
+los que viven por sus manos
+y los ricos.` },
+  { t: 'Amor constante más allá de la muerte', a: 'Francisco de Quevedo (1648)', k: 'O',
+    p: `Cerrar podrá mis ojos la postrera
+sombra que me llevare el blanco día,
+y podrá desatar esta alma mía
+hora a su afán ansioso lisonjera;
+
+mas no de esotra parte en la ribera
+dejará la memoria, en donde ardía:
+nadar sabe mi llama la agua fría,
+y perder el respeto a ley severa.
+
+Alma a quien todo un dios prisión ha sido,
+venas que humor a tanto fuego han dado,
+médulas que han gloriosamente ardido,
+
+su cuerpo dejará, no su cuidado;
+serán ceniza, mas tendrá sentido;
+polvo serán, mas polvo enamorado.` },
+  { t: 'Rima XXI', a: 'Gustavo Adolfo Bécquer (1871)', k: 'O',
+    p: `¿Qué es poesía?, dices mientras clavas
+en mi pupila tu pupila azul.
+¿Qué es poesía? ¿Y tú me lo preguntas?
+Poesía… eres tú.` },
+  { t: 'Proverbios y cantares, XXIX', a: 'Antonio Machado, Campos de Castilla (1912)', k: 'O',
+    p: `Caminante, son tus huellas
+el camino y nada más;
+caminante, no hay camino,
+se hace camino al andar.
+Al andar se hace el camino,
+y al volver la vista atrás
+se ve la senda que nunca
+se ha de volver a pisar.
+Caminante, no hay camino,
+sino estelas en la mar.` }
+];
+
+const dayIdx = () => { const n = new Date(), s = new Date(n.getFullYear(), 0, 0); return Math.floor((n - s) / 86400000); };
+let i = dayIdx() % POEMS.length;
+function show() {
+  const x = POEMS[i];
+  document.getElementById('t').textContent = x.t;
+  document.getElementById('a').textContent = x.a;
+  const p = document.getElementById('p');
+  p.className = 'poem' + (x.prose ? ' prose' : '');
+  p.replaceChildren();
+  if (x.prose) x.p.split('\n').forEach(par => { const e = document.createElement('p'); e.textContent = par; p.append(e); });
+  else p.textContent = x.p;
+  document.getElementById('n').textContent = x.k === 'T' ? 'Traducción propia del ' + x.from + '. Texto de dominio público.' : 'Texto original, de dominio público.';
+}
+document.getElementById('other').onclick = () => { let j; do { j = Math.floor(Math.random() * POEMS.length); } while (j === i && POEMS.length > 1); i = j; show(); };
+document.getElementById('today').onclick = () => { i = dayIdx() % POEMS.length; show(); };
+show();
+</script>
+</body>
+</html>

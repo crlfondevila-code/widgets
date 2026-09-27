@@ -1,0 +1,166 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Reloj y Luna</title>
+<style>
+:root { --bg:#fff; --text:#37352f; --muted:#787774; --line:#e9e9e7; --card:#2b2b2b; --card2:#333; --digit:#f4f3ef; --moon:#f3e9c6; --moondark:#3a3a3a; }
+@media (prefers-color-scheme: dark) { :root { --bg:#191919; --text:#e8e7e4; --muted:#9b9a97; --line:#303030; --card:#2a2a2a; --card2:#323232; --digit:#f1efe8; --moondark:#0f0f0f; } }
+* { box-sizing: border-box; }
+html, body { margin: 0; background: var(--bg); color: var(--text); }
+body { font: 14px/1.4 ui-sans-serif, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; -webkit-font-smoothing: antialiased; }
+.wrap { padding: 14px 12px; display: flex; flex-direction: column; align-items: center; gap: 12px; }
+.clock { display: flex; align-items: center; gap: 6px; }
+.colon { font-size: 34px; font-weight: 700; color: var(--muted); margin: 0 2px; animation: blink 2s steps(1) infinite; }
+@keyframes blink { 50% { opacity: .25; } }
+.d { position: relative; width: 46px; height: 66px; perspective: 300px; font: 700 46px/66px ui-monospace, "SF Mono", Menlo, Consolas, monospace; color: var(--digit); text-align: center; }
+.half { position: absolute; left: 0; right: 0; height: 50%; overflow: hidden; background: var(--card); }
+.half span { display: block; height: 66px; }
+.top { top: 0; border-radius: 8px 8px 0 0; background: var(--card2); }
+.bot { bottom: 0; border-radius: 0 0 8px 8px; }
+.bot span { transform: translateY(-33px); }
+.d::after { content: ""; position: absolute; left: 0; right: 0; top: 50%; height: 1px; background: rgba(0,0,0,.45); z-index: 5; }
+.flap { position: absolute; left: 0; right: 0; height: 50%; overflow: hidden; backface-visibility: hidden; z-index: 3; }
+.flap.ft { top: 0; background: var(--card2); border-radius: 8px 8px 0 0; transform-origin: bottom; animation: ft .26s ease-in forwards; }
+.flap.fb { bottom: 0; background: var(--card); border-radius: 0 0 8px 8px; transform-origin: top; transform: rotateX(90deg); animation: fb .26s .26s ease-out forwards; }
+.flap.fb span { transform: translateY(-33px); }
+.flap span { display: block; height: 66px; }
+@keyframes ft { to { transform: rotateX(-90deg); } }
+@keyframes fb { to { transform: rotateX(0deg); } }
+.date { font-size: 13px; color: var(--muted); margin-top: -4px; }
+.sec { width: 220px; max-width: 80%; height: 3px; border-radius: 3px; background: var(--line); overflow: hidden; margin-top: -4px; }
+.sec i { display: block; height: 100%; width: 0; background: var(--muted); transition: width 1s linear; }
+.moon { display: flex; align-items: center; gap: 14px; width: 100%; max-width: 320px; padding-top: 10px; border-top: 1px solid var(--line); }
+.moon svg { width: 64px; height: 64px; flex: none; }
+.mtxt b { display: block; font-size: 14px; }
+.mtxt div { font-size: 12.5px; color: var(--muted); font-variant-numeric: tabular-nums; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="clock" aria-live="off" aria-label="Hora">
+    <div class="d" id="d0"></div><div class="d" id="d1"></div><span class="colon">:</span><div class="d" id="d2"></div><div class="d" id="d3"></div>
+  </div>
+  <div class="date" id="date"></div>
+  <div class="sec"><i id="sec"></i></div>
+  <div class="moon">
+    <svg viewBox="-34 -34 68 68" aria-hidden="true">
+      <defs><radialGradient id="g" cx="-0.25" cy="-0.25" r="1.1"><stop offset="0" stop-color="#fff7dc"/><stop offset="1" stop-color="#e6d6a3"/></radialGradient></defs>
+      <circle r="30" fill="var(--moondark)"/>
+      <path id="lit" fill="url(#g)"/>
+      <circle r="30" fill="none" stroke="var(--line)"/>
+    </svg>
+    <div class="mtxt"><b id="mname"></b><div id="mill"></div><div id="msign"></div><div id="mnext"></div></div>
+  </div>
+</div>
+<script>
+// Luna y Sol de baja precisión (Meeus, caps. 25 y 47 truncados). Error típico < 0,05°.
+const Moon = (function () {
+  const D2R = Math.PI / 180, norm = x => ((x % 360) + 360) % 360;
+  const s = x => Math.sin(x * D2R);
+  const T = date => (date.getTime() / 86400000 + 2440587.5 - 2451545.0) / 36525;
+  function sunLon(t) {
+    const L0 = 280.46646 + 36000.76983 * t, M = 357.52911 + 35999.05029 * t;
+    const C = (1.914602 - 0.004817 * t) * s(M) + (0.019993 - 0.000101 * t) * s(2 * M) + 0.000289 * s(3 * M);
+    const om = 125.04 - 1934.136 * t;
+    return norm(L0 + C - 0.00569 - 0.00478 * s(om));
+  }
+  // [D, M, M', F, coef(1e-6 °)]
+  const TERMS = [
+    [0,0,1,0,6288774],[2,0,-1,0,1274027],[2,0,0,0,658314],[0,0,2,0,213618],[0,1,0,0,-185116],[0,0,0,2,-114332],
+    [2,0,-2,0,58793],[2,-1,-1,0,57066],[2,0,1,0,53322],[2,-1,0,0,45758],[0,1,-1,0,-40923],[1,0,0,0,-34720],
+    [0,1,1,0,-30383],[2,0,0,-2,15327],[0,0,1,2,-12528],[0,0,1,-2,10980],[4,0,-1,0,10675],[0,0,3,0,10034],
+    [4,0,-2,0,8548],[2,1,-1,0,-7888],[2,1,0,0,-6766],[1,0,-1,0,-5163],[1,1,0,0,4987],[2,-1,1,0,4036],
+    [2,0,2,0,3994],[4,0,0,0,3861],[2,0,-3,0,3665],[0,1,-2,0,-2689],[2,0,-1,2,-2602],[2,-1,-2,0,2390],
+    [1,0,1,0,-2348],[2,-2,0,0,2236],[0,1,2,0,-2120],[0,2,0,0,-2069],[2,-2,-1,0,2048],[2,0,1,-2,-1773],
+    [2,0,0,2,-1595],[4,-1,-1,0,1215],[0,0,2,2,-1110],[3,0,-1,0,-892],[2,1,1,0,-810],[4,-1,-2,0,759],
+    [0,2,-1,0,-713],[2,2,-1,0,-700],[2,1,-2,0,691],[2,-1,0,-2,596],[4,0,1,0,549],[0,0,4,0,537]
+  ];
+  function moonLon(t) {
+    const Lp = 218.3164477 + 481267.88123421 * t, D = 297.8501921 + 445267.1114034 * t;
+    const M = 357.5291092 + 35999.0502909 * t, Mp = 134.9633964 + 477198.8675055 * t, F = 93.2720950 + 483202.0175233 * t;
+    const E = 1 - 0.002516 * t - 0.0000074 * t * t;
+    let sum = 0;
+    for (const [d, m, mp, f, c] of TERMS) {
+      const e = Math.abs(m) === 1 ? E : Math.abs(m) === 2 ? E * E : 1;
+      sum += c * e * s(d * D + m * M + mp * Mp + f * F);
+    }
+    const A1 = 119.75 + 131.849 * t, A2 = 53.09 + 479264.290 * t;
+    sum += 3958 * s(A1) + 1962 * s(Lp - F) + 318 * s(A2);
+    const om = 125.04 - 1934.136 * t;
+    return norm(Lp + sum / 1e6 - 0.00478 * s(om));
+  }
+  const elong = date => { const t = T(date); return norm(moonLon(t) - sunLon(t)); };
+  function state(date) {
+    const t = T(date), lm = moonLon(t), e = norm(lm - sunLon(t));
+    const illum = (1 - Math.cos(e * D2R)) / 2;
+    return { e, illum, lon: lm, waxing: e < 180 };
+  }
+  // Próximo instante en que la elongación vale target (0 = nueva, 180 = llena)
+  function next(date, target) {
+    const f = d => ((elong(d) - target + 540) % 360) - 180;
+    let a = new Date(date.getTime()), fa = f(a);
+    for (let i = 0; i < 32 * 4; i++) {
+      const b = new Date(a.getTime() + 6 * 3600000), fb = f(b);
+      if (fa < 0 && fb >= 0) {
+        let lo = a, hi = b;
+        for (let k = 0; k < 30; k++) { const mid = new Date((lo.getTime() + hi.getTime()) / 2); if (f(mid) < 0) lo = mid; else hi = mid; }
+        return hi;
+      }
+      a = b; fa = fb;
+    }
+    return null;
+  }
+  // Mismos cortes que el widget de la Luna de la carta: las fases exactas ocupan ±6°
+  const phaseName = p => p < 6 || p >= 354 ? 'Luna nueva' : p < 84 ? 'Luna creciente' : p < 96 ? 'Cuarto creciente' : p < 174 ? 'Gibosa creciente'
+    : p < 186 ? 'Luna llena' : p < 264 ? 'Gibosa menguante' : p < 276 ? 'Cuarto menguante' : 'Luna menguante';
+  const SIGNS = ['Aries', 'Tauro', 'Géminis', 'Cáncer', 'Leo', 'Virgo', 'Libra', 'Escorpio', 'Sagitario', 'Capricornio', 'Acuario', 'Piscis'];
+  const GLYPHS = ['♈', '♉', '♊', '♋', '♌', '♍', '♎', '♏', '♐', '♑', '♒', '♓'];
+  const sign = lon => ({ name: SIGNS[Math.floor(lon / 30)], glyph: GLYPHS[Math.floor(lon / 30)] + '︎', deg: Math.floor(lon % 30) });
+  return { state, next, phaseName, sign, moonLon, sunLon, T };
+})();
+if (typeof module !== 'undefined') module.exports = Moon;
+
+</script>
+<script>
+const digits = [0, 1, 2, 3].map(i => document.getElementById('d' + i));
+const shown = ['', '', '', ''];
+function half(cls, v) { const h = document.createElement('div'); h.className = cls; const s = document.createElement('span'); s.textContent = v; h.append(s); return h; }
+function setDigit(i, v, animate) {
+  const d = digits[i], old = shown[i];
+  if (old === v) return;
+  shown[i] = v;
+  if (!animate || old === '') { d.replaceChildren(half('half top', v), half('half bot', v)); return; }
+  d.replaceChildren(half('half top', v), half('half bot', old), half('flap ft', old), half('flap fb', v));
+  setTimeout(() => { if (shown[i] === v) d.replaceChildren(half('half top', v), half('half bot', v)); }, 560);
+}
+function tickClock(first) {
+  const n = new Date(), hh = String(n.getHours()).padStart(2, '0'), mm = String(n.getMinutes()).padStart(2, '0');
+  [hh[0], hh[1], mm[0], mm[1]].forEach((v, i) => setDigit(i, v, !first));
+  const ds = n.toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' });
+  document.getElementById('date').textContent = ds.charAt(0).toUpperCase() + ds.slice(1);
+  document.getElementById('sec').style.width = (n.getSeconds() / 59 * 100) + '%';
+}
+function moonPath(e) {
+  const r = 30, waxing = e < 180, q = waxing ? e : 360 - e, rx = r * Math.abs(Math.cos(q * Math.PI / 180)), cres = q < 90;
+  return waxing
+    ? `M0 ${-r} A${r} ${r} 0 0 1 0 ${r} A${rx} ${r} 0 0 ${cres ? 0 : 1} 0 ${-r}Z`
+    : `M0 ${-r} A${r} ${r} 0 0 0 0 ${r} A${rx} ${r} 0 0 ${cres ? 1 : 0} 0 ${-r}Z`;
+}
+const dfmt = d => d.toLocaleDateString('es-ES', { weekday: 'short', day: 'numeric', month: 'short' });
+function tickMoon() {
+  const n = new Date(), st = Moon.state(n), sg = Moon.sign(st.lon);
+  document.getElementById('lit').setAttribute('d', moonPath(st.e));
+  document.getElementById('mname').textContent = Moon.phaseName(st.e);
+  document.getElementById('mill').textContent = 'Iluminada ' + Math.round(st.illum * 100) + ' % · ' + (st.waxing ? 'creciendo' : 'menguando');
+  document.getElementById('msign').textContent = 'Luna en ' + sg.name + ' ' + sg.glyph + ' ' + sg.deg + '°';
+  const full = Moon.next(n, 180), nw = Moon.next(n, 0);
+  document.getElementById('mnext').textContent = 'Llena: ' + dfmt(full) + ' · Nueva: ' + dfmt(nw);
+}
+tickClock(true); tickMoon();
+setInterval(() => tickClock(false), 1000);
+setInterval(tickMoon, 10 * 60 * 1000);
+</script>
+</body>
+</html>

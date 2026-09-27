@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Widgets para Notion</title>
+<style>
+:root { --bg:#fff; --text:#37352f; --muted:#787774; --card:#f7f7f5; }
+@media (prefers-color-scheme: dark) { :root { --bg:#191919; --text:#e8e7e4; --muted:#9b9a97; --card:#232323; } }
+body { margin: 0; background: var(--bg); color: var(--text); font: 15px/1.5 ui-sans-serif, -apple-system, "Segoe UI", Roboto, sans-serif; }
+main { max-width: 620px; margin: 0 auto; padding: 32px 16px; }
+h1 { font-size: 20px; margin: 0 0 4px; }
+h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin: 22px 0 8px; }
+p.lead { color: var(--muted); margin: 0 0 8px; font-size: 14px; }
+a { display: block; background: var(--card); border-radius: 12px; padding: 12px 14px; margin-bottom: 8px; color: inherit; text-decoration: none; }
+a b { display: block; }
+a span { color: var(--muted); font-size: 13px; }
+code { font-size: 12.5px; }
+</style>
+</head>
+<body>
+<main>
+<h1>Widgets para Notion</h1>
+<p class="lead">Páginas pequeñas para incrustar en Notion con /embed. Se calculan en el navegador; no guardan nada.</p>
+
+<h2>Día a día</h2>
+<a href="reloj-luna.html"><b>🕰️ Reloj y Luna</b><span>Reloj con números que giran, la fecha y la fase de la Luna.</span></a>
+<a href="poema.html"><b>📜 Poema del día</b><span>Un poema de dominio público cada día.</span></a>
+<a href="rincon.html"><b>🎈 Rincón</b><span>Frase del día, sonidos de ambiente y una gata pixelada.</span></a>
+<a href="mis-lugares.html"><b>🌤️ El tiempo</b><span>Varios lugares con botones para cambiar: ahora y 7 días, mar y nieve. Los lugares van en el enlace: <code>#l=Nombre,lat,lon,mar|…</code></span></a>
+<a href="reloj-organos.html"><b>☯️ Reloj de órganos</b><span>Los 12 meridianos a lo largo del día, en hora civil o solar (<code>#lon=…</code>).</span></a>
+
+<h2>Carta astral</h2>
+<p class="lead">Los datos de nacimiento van al final del enlace, después de #, y no salen del navegador. Si abres una sin datos, te sale un formulario para crear el enlace.</p>
+<a href="carta-completa.html"><b>🪐 Carta completa</b><span>Rueda, tránsitos, posiciones y casas.</span></a>
+<a href="carta-rueda.html"><b>☸️ Rueda</b><span>Rueda natal con los tránsitos de la fecha.</span></a>
+<a href="carta-tablas.html"><b>📋 Tablas</b><span>Tránsitos activos y posiciones.</span></a>
+<a href="carta-luna.html"><b>🌙 La Luna</b><span>Fase, próximas lunas y el mes; con datos, qué toca de tu carta.</span></a>
+</main>
+</body>
+</html>

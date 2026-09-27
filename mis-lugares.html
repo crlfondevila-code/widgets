@@ -1,0 +1,157 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>El tiempo</title>
+<style>
+:root { --bg:#fff; --card:#f7f7f5; --text:#37352f; --muted:#787774; --line:#e9e9e7; --on:#37352f; --onText:#fff; --sea:#2b7bb9; --snow:#5b7fa6; --hot:#c4553f; --cold:#3f73b0; }
+@media (prefers-color-scheme: dark) { :root { --bg:#191919; --card:#232323; --text:#e8e7e4; --muted:#9b9a97; --line:#303030; --on:#e8e7e4; --onText:#191919; --sea:#6fb3e6; --snow:#9dbde0; --hot:#ec8b74; --cold:#8db4ea; } }
+* { box-sizing: border-box; }
+html, body { margin: 0; background: var(--bg); color: var(--text); }
+body { font: 14px/1.4 ui-sans-serif, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; -webkit-font-smoothing: antialiased; }
+.wrap { padding: 10px 12px 12px; max-width: 640px; margin: 0 auto; }
+.tabs { display: flex; gap: 4px; background: var(--card); border-radius: 999px; padding: 3px; margin-bottom: 10px; overflow-x: auto; scrollbar-width: none; }
+.tabs::-webkit-scrollbar { display: none; }
+.tabs button { flex: 1 0 auto; border: 0; background: none; color: var(--muted); font: inherit; font-size: 13px; padding: 6px 12px; border-radius: 999px; cursor: pointer; white-space: nowrap; }
+.tabs button[aria-selected="true"] { background: var(--on); color: var(--onText); }
+.now { display: grid; grid-template-columns: auto 1fr; gap: 2px 12px; align-items: center; }
+.ico { font-size: 40px; line-height: 1; grid-row: 1 / span 2; }
+.temp { font-size: 30px; font-weight: 600; letter-spacing: -0.5px; font-variant-numeric: tabular-nums; }
+.temp small { font-size: 13px; font-weight: 400; color: var(--muted); letter-spacing: 0; margin-left: 6px; }
+.desc { font-size: 13px; color: var(--muted); }
+.meta { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 12.5px; color: var(--muted); margin-top: 8px; font-variant-numeric: tabular-nums; }
+.extra { font-size: 13px; margin-top: 6px; }
+.extra.sea { color: var(--sea); }
+.extra.snow { color: var(--snow); }
+.days { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 2px; margin-top: 10px; padding-top: 8px; border-top: 1px solid var(--line); text-align: center; font-variant-numeric: tabular-nums; }
+.days div { display: grid; gap: 1px; font-size: 12px; }
+.days .d { color: var(--muted); font-size: 11px; text-transform: capitalize; }
+.days .i { font-size: 18px; line-height: 1.3; }
+.days .mx { color: var(--hot); }
+.days .mn { color: var(--cold); }
+.days .pp { color: var(--muted); font-size: 10.5px; }
+@media (max-width: 300px) { .days { grid-template-columns: repeat(5, minmax(0, 1fr)); } .days div:nth-child(n+6) { display: none; } }
+.foot { margin-top: 6px; font-size: 11px; color: var(--muted); text-align: right; }
+.err { font-size: 12.5px; color: var(--muted); padding: 10px 2px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="tabs" role="tablist" aria-label="Lugar" id="tabs"></div>
+  <div id="panel" role="tabpanel" aria-live="polite"></div>
+  <div class="foot" id="upd">Cargando…</div>
+</div>
+<script>
+// Los lugares van en el enlace: #l=Nombre,lat,lon,extra|…  (extra: mar o nieve). Opcional: &sel=Nombre
+// Ejemplo: #l=Lleida,41.6176,0.62|Tarragona,41.1189,1.2445,mar|Vielha,42.7016,0.7956,nieve
+const HASH = new URLSearchParams(location.hash.slice(1));
+const PLACES = (HASH.get('l') || 'Lleida,41.6176,0.62|Tarragona,41.1189,1.2445,mar|Vielha,42.7016,0.7956,nieve')
+  .split('|').map(t => {
+    const [name, lat, lon, extra] = t.split(',').map(x => (x || '').trim());
+    const p = { name, lat: +lat, lon: +lon };
+    if (extra === 'mar') p.sea = { lat: +lat - 0.02, lon: +lon + 0.01 };
+    if (extra === 'nieve') p.snow = true;
+    return p;
+  }).filter(p => p.name && !isNaN(p.lat) && !isNaN(p.lon)).slice(0, 6);
+
+const WMO = {
+  0: ['Despejado', '☀️', '🌙'], 1: ['Casi despejado', '🌤️', '🌙'], 2: ['Nubes y claros', '⛅', '☁️'], 3: ['Nublado', '☁️', '☁️'],
+  45: ['Niebla', '🌫️'], 48: ['Niebla con escarcha', '🌫️'],
+  51: ['Llovizna débil', '🌦️'], 53: ['Llovizna', '🌦️'], 55: ['Llovizna intensa', '🌧️'], 56: ['Llovizna helada', '🌧️'], 57: ['Llovizna helada', '🌧️'],
+  61: ['Lluvia débil', '🌦️'], 63: ['Lluvia', '🌧️'], 65: ['Lluvia fuerte', '🌧️'], 66: ['Lluvia helada', '🌧️'], 67: ['Lluvia helada', '🌧️'],
+  71: ['Nieve débil', '🌨️'], 73: ['Nieve', '🌨️'], 75: ['Nevada fuerte', '❄️'], 77: ['Granos de nieve', '🌨️'],
+  80: ['Chubascos', '🌦️'], 81: ['Chubascos', '🌧️'], 82: ['Chubascos fuertes', '⛈️'], 85: ['Chubascos de nieve', '🌨️'], 86: ['Chubascos de nieve', '❄️'],
+  95: ['Tormenta', '⛈️'], 96: ['Tormenta con granizo', '⛈️'], 99: ['Tormenta con granizo', '⛈️']
+};
+const r0 = n => Math.round(n);
+const fmt1 = n => n.toLocaleString('es-ES', { maximumFractionDigits: 1 });
+const hhmm = iso => iso ? iso.slice(11, 16) : '—';
+function el(tag, cls, text) { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; }
+
+const store = { get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }, set(k, v) { try { localStorage.setItem(k, v); } catch (e) {} } };
+let sel = Math.max(0, PLACES.findIndex(p => p.name === (HASH.get('sel') || store.get('tiempo-lugar'))));
+let data = null, sea = null;
+
+const tabs = document.getElementById('tabs'), panel = document.getElementById('panel'), upd = document.getElementById('upd');
+PLACES.forEach((p, i) => {
+  const b = el('button', null, p.name); b.type = 'button'; b.setAttribute('role', 'tab');
+  b.onclick = () => { sel = i; store.set('tiempo-lugar', p.name); paintTabs(); render(); };
+  tabs.append(b);
+});
+function paintTabs() { [...tabs.children].forEach((b, i) => b.setAttribute('aria-selected', i === sel ? 'true' : 'false')); }
+
+async function getJSON(url) {
+  const ctl = new AbortController(); const t = setTimeout(() => ctl.abort(), 12000);
+  try { const r = await fetch(url, { signal: ctl.signal }); if (!r.ok) throw new Error(r.status); return await r.json(); }
+  finally { clearTimeout(t); }
+}
+
+async function load() {
+  const q = 'latitude=' + PLACES.map(p => p.lat).join(',') + '&longitude=' + PLACES.map(p => p.lon).join(',') +
+    '&current=temperature_2m,apparent_temperature,weather_code,wind_speed_10m,is_day,snow_depth' +
+    '&daily=weather_code,temperature_2m_max,temperature_2m_min,sunrise,sunset,precipitation_probability_max&timezone=Europe%2FMadrid&forecast_days=7';
+  try {
+    const wx = await getJSON('https://api.open-meteo.com/v1/forecast?' + q);
+    data = Array.isArray(wx) ? wx : [wx];
+  } catch (e) {
+    if (!data) panel.replaceChildren(el('div', 'err', 'No hay conexión con el servicio del tiempo. Se reintentará en unos minutos.'));
+    upd.textContent = 'Sin conexión'; return;
+  }
+  const s = PLACES.find(p => p.sea);
+  if (s) {
+    try { sea = await getJSON(`https://marine-api.open-meteo.com/v1/marine?latitude=${s.sea.lat}&longitude=${s.sea.lon}&current=sea_surface_temperature,wave_height&timezone=Europe%2FMadrid`); }
+    catch (e) { sea = null; }
+  }
+  upd.textContent = 'Open-Meteo · actualizado ' + new Date().toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
+  render();
+}
+
+function render() {
+  if (!data) return;
+  const p = PLACES[sel], d = data[sel];
+  if (!d || !d.current) { panel.replaceChildren(el('div', 'err', 'Sin datos para ' + p.name)); return; }
+  const cur = d.current, day = d.daily || {};
+  const w = WMO[cur.weather_code] || ['—', '🌡️'];
+  const now = el('div', 'now');
+  now.append(el('div', 'ico', cur.is_day === 0 && w[2] ? w[2] : w[1]));
+  const t = el('div', 'temp', r0(cur.temperature_2m) + '°');
+  if (d.elevation != null) t.append(el('small', null, Math.round(d.elevation).toLocaleString('es-ES') + ' m'));
+  now.append(t, el('div', 'desc', w[0] + ' · sensación ' + r0(cur.apparent_temperature) + '°'));
+  const meta = el('div', 'meta');
+  if (day.temperature_2m_max) meta.append(el('span', null, '↑ ' + r0(day.temperature_2m_max[0]) + '°  ↓ ' + r0(day.temperature_2m_min[0]) + '°'));
+  if (day.precipitation_probability_max && day.precipitation_probability_max[0] != null) meta.append(el('span', null, '💧 ' + day.precipitation_probability_max[0] + ' %'));
+  meta.append(el('span', null, '💨 ' + r0(cur.wind_speed_10m) + ' km/h'));
+  if (day.sunrise) meta.append(el('span', null, '🌅 ' + hhmm(day.sunrise[0]) + ' · 🌇 ' + hhmm(day.sunset[0])));
+  const out = [now, meta];
+  if (p.sea && sea && sea.current && sea.current.sea_surface_temperature != null) {
+    const wv = sea.current.wave_height;
+    out.push(el('div', 'extra sea', '🌊 Mar a ' + fmt1(sea.current.sea_surface_temperature) + ' °C' + (wv != null ? ' · olas de ' + fmt1(wv) + ' m' : '')));
+  }
+  if (p.snow) {
+    const sd = cur.snow_depth;
+    out.push(el('div', 'extra snow', sd && sd > 0.005 ? '❄️ Nieve en el suelo: ' + r0(sd * 100) + ' cm' : '❄️ Sin nieve en el suelo'));
+  }
+  if (day.time) {
+    const days = el('div', 'days');
+    day.time.slice(0, 7).forEach((iso, i) => {
+      const dt = new Date(iso + 'T12:00');
+      const lab = i === 0 ? 'Hoy' : i === 1 ? 'Mañana' : dt.toLocaleDateString('es-ES', { weekday: 'short' }).replace('.', '');
+      const ww = WMO[day.weather_code?.[i]] || ['', '·'];
+      const c = el('div');
+      c.append(el('span', 'd', lab), el('span', 'i', ww[1]), el('span', 'mx', r0(day.temperature_2m_max[i]) + '°'), el('span', 'mn', r0(day.temperature_2m_min[i]) + '°'));
+      if (day.precipitation_probability_max?.[i] != null) c.append(el('span', 'pp', day.precipitation_probability_max[i] + ' %'));
+      c.title = ww[0];
+      days.append(c);
+    });
+    out.push(days);
+  }
+  panel.replaceChildren(...out);
+}
+
+paintTabs();
+load();
+setInterval(load, 15 * 60 * 1000);
+</script>
+</body>
+</html>

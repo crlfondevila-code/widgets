@@ -1,0 +1,462 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#faf9f5;color:#141413}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Carta natal</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&family=Marcellus&family=Noto+Sans+Symbols&family=Noto+Sans+Symbols+2&display=swap">
+<style>
+  :root {
+    --bg: #ECEEF3;
+    --surface: #F8F9FB;
+    --ink: #1A2030;
+    --muted: #5A6377;
+    --rule: #C9CFDA;
+    --faint: #DFE3EA;
+    --transit: #2A54C6;
+    --harm: #1F7D6C;
+    --tens: #BC3D35;
+    --conj: #8A6810;
+    --fire: rgba(205, 85, 55, .15);
+    --earth: rgba(105, 130, 50, .16);
+    --air: rgba(200, 160, 35, .18);
+    --water: rgba(55, 105, 200, .15);
+    --display: "Marcellus", "Cormorant Garamond", Georgia, serif;
+    --body: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+    --mono: "IBM Plex Mono", ui-monospace, "Cascadia Mono", Consolas, monospace;
+    --glyph: "Noto Sans Symbols", "Noto Sans Symbols 2", "Segoe UI Symbol", "Apple Symbols", "DejaVu Sans", sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      color-scheme: dark;
+      --bg: #0F121A; --surface: #161A24; --ink: #E3E6EE; --muted: #98A0B3; --rule: #2C3344; --faint: #1E2331;
+      --transit: #8AA8FF; --harm: #52C3AD; --tens: #F07D72; --conj: #D8B14E;
+      --fire: rgba(230, 110, 80, .22); --earth: rgba(140, 170, 80, .20); --air: rgba(230, 190, 70, .20); --water: rgba(90, 140, 240, .22);
+    }
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --bg: #0F121A; --surface: #161A24; --ink: #E3E6EE; --muted: #98A0B3; --rule: #2C3344; --faint: #1E2331;
+    --transit: #8AA8FF; --harm: #52C3AD; --tens: #F07D72; --conj: #D8B14E;
+    --fire: rgba(230, 110, 80, .22); --earth: rgba(140, 170, 80, .20); --air: rgba(230, 190, 70, .20); --water: rgba(90, 140, 240, .22);
+  }
+  * { box-sizing: border-box; }
+  body { background: var(--bg); color: var(--ink); font: 15px/1.5 var(--body); }
+  .wrap { max-width: 1180px; margin: 0 auto; padding: 28px 20px 48px; display: flex; flex-direction: column; gap: 24px; }
+  header { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 16px 32px; }
+  .eyebrow { margin: 0 0 4px; font-size: 12px; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
+  h1 { margin: 0; font: 400 clamp(34px, 6vw, 52px)/1.05 var(--display); letter-spacing: .01em; text-wrap: balance; }
+  .birth { margin: 6px 0 0; color: var(--muted); font-size: 14px; }
+  .big3 { display: flex; flex-wrap: wrap; gap: 8px 22px; margin: 0; }
+  .big3 div { display: flex; flex-direction: column; }
+  .big3 dt { font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+  .big3 dd { margin: 0; font-size: 17px; font-variant-numeric: tabular-nums; }
+  .gl { font-family: var(--glyph); font-weight: 400; }
+
+  .controls { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; padding: 12px 14px; background: var(--surface); border: 1px solid var(--rule); border-radius: 10px; }
+  .controls label { font-size: 13px; color: var(--muted); }
+  input[type="datetime-local"] { font: 15px var(--mono); color: var(--ink); background: var(--bg); border: 1px solid var(--rule); border-radius: 6px; padding: 6px 8px; }
+  .steps { display: flex; flex-wrap: wrap; gap: 6px; }
+  button { font: 500 13px var(--body); color: var(--ink); background: var(--bg); border: 1px solid var(--rule); border-radius: 6px; padding: 6px 10px; cursor: pointer; font-variant-numeric: tabular-nums; }
+  button:hover { border-color: var(--muted); }
+  button:focus-visible, input:focus-visible, summary:focus-visible { outline: 2px solid var(--transit); outline-offset: 2px; }
+  button.now { background: var(--transit); color: var(--surface); border-color: var(--transit); }
+  .readout { margin-left: auto; font-size: 14px; color: var(--muted); }
+  .readout strong { color: var(--ink); font-weight: 500; }
+
+  .grid { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: 28px; align-items: start; }
+  @media (max-width: 880px) { .grid { grid-template-columns: minmax(0, 1fr); } .readout { margin-left: 0; width: 100%; } }
+  figure { margin: 0; }
+  @media (min-width: 881px) { .wheel { position: sticky; top: calc(env(safe-area-inset-top, 0px) + 12px); } }
+  .wheel svg { display: block; width: 100%; max-width: 720px; height: auto; margin: 0 auto; }
+  .legend { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px 18px; margin-top: 10px; font-size: 13px; color: var(--muted); }
+  .legend span { display: inline-flex; align-items: center; gap: 6px; }
+  .sw { width: 18px; height: 3px; border-radius: 2px; display: inline-block; }
+  .seg { display: inline-flex; border: 1px solid var(--rule); border-radius: 6px; overflow: hidden; }
+  .seg button { border: 0; border-radius: 0; background: transparent; }
+  .seg button[aria-pressed="true"] { background: var(--ink); color: var(--surface); }
+  .wheel-tools { display: flex; justify-content: center; margin-top: 12px; gap: 10px; flex-wrap: wrap; align-items: center; font-size: 13px; color: var(--muted); }
+
+  h2 { font: 400 22px/1.2 var(--display); margin: 0; }
+  .panel { display: flex; flex-direction: column; gap: 12px; }
+  .panel-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+  .check { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--muted); }
+  ul.asp { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+  ul.asp li { display: grid; grid-template-columns: 4px minmax(0, 1fr); gap: 0 12px; background: var(--surface); border: 1px solid var(--rule); border-radius: 8px; padding: 10px 12px 10px 0; }
+  ul.asp li::before { content: ""; border-radius: 0 3px 3px 0; background: var(--c); grid-row: span 2; }
+  ul.asp .line { font-size: 15px; }
+  ul.asp .line .gl { font-size: 17px; }
+  ul.asp .t { color: var(--transit); }
+  ul.asp .a { color: var(--c); font-weight: 600; }
+  ul.asp .meta { font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .tag { display: inline-block; font-size: 11px; letter-spacing: .06em; text-transform: uppercase; padding: 1px 6px; border-radius: 4px; border: 1px solid currentColor; margin-left: 6px; }
+  .empty { color: var(--muted); font-size: 14px; padding: 12px; background: var(--surface); border: 1px dashed var(--rule); border-radius: 8px; }
+
+  .tbl-wrap { overflow-x: auto; background: var(--surface); border: 1px solid var(--rule); border-radius: 10px; }
+  table { border-collapse: collapse; width: 100%; font-size: 14px; font-variant-numeric: tabular-nums; }
+  th, td { padding: 8px 12px; text-align: left; border-bottom: 1px solid var(--faint); white-space: nowrap; }
+  thead th { font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); font-weight: 500; }
+  tbody tr:last-child td { border-bottom: 0; }
+  td.num { font-family: var(--mono); font-size: 13.5px; }
+  .tcol { color: var(--transit); }
+  .rx { color: var(--tens); font-size: 12px; margin-left: 4px; }
+  details { background: var(--surface); border: 1px solid var(--rule); border-radius: 10px; padding: 10px 14px; }
+  summary { cursor: pointer; font-weight: 500; }
+  .cusps { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 6px 16px; margin: 10px 0 2px; font-size: 14px; font-variant-numeric: tabular-nums; }
+  .cusps span { color: var(--muted); display: inline-block; min-width: 56px; }
+  footer { font-size: 13px; color: var(--muted); max-width: 70ch; }
+  .err { padding: 16px; border: 1px solid var(--tens); color: var(--tens); border-radius: 8px; }
+
+  /* SVG */
+  .z-ring { stroke: var(--rule); stroke-width: 1; }
+  .ring { fill: none; stroke: var(--rule); stroke-width: 1; }
+  .ring-strong { fill: none; stroke: var(--muted); stroke-width: 1.2; }
+  .tick { stroke: var(--muted); stroke-width: .8; }
+  .cusp { stroke: var(--rule); stroke-width: 1; }
+  .axis { stroke: var(--ink); stroke-width: 2; }
+  .s-sign { font-family: var(--glyph); font-size: 34px; fill: var(--ink); }
+  .s-natal { font-family: var(--glyph); font-size: 36px; fill: var(--ink); }
+  .s-transit { font-family: var(--glyph); font-size: 32px; fill: var(--transit); }
+  .s-deg { font-family: var(--mono); font-size: 18px; fill: var(--muted); }
+  .s-degt { font-family: var(--mono); font-size: 17px; fill: var(--transit); }
+  .s-house { font-family: var(--mono); font-size: 17px; fill: var(--muted); }
+  .s-axis { font-family: var(--body); font-size: 19px; font-weight: 600; fill: var(--ink); }
+  .lead { stroke: var(--muted); stroke-width: .8; }
+  .lead-t { stroke: var(--transit); stroke-width: .8; opacity: .8; }
+  .dot-n { fill: var(--ink); }
+  .dot-t { fill: var(--surface); stroke: var(--transit); stroke-width: 1.5; }
+  .inner { fill: var(--surface); }
+  @media (prefers-reduced-motion: no-preference) { .wheel svg .aspline { transition: opacity .2s; } }
+</style>
+
+<div class="wrap">
+  <header>
+    <div>
+      <p class="eyebrow">Carta natal · tropical · casas Plácidus</p>
+      <h1 id="who">Carta natal</h1>
+      <p class="birth" id="birthline"></p>
+    </div>
+    <dl class="big3" id="big3"></dl>
+  </header>
+
+  <section class="controls" aria-label="Fecha de los tránsitos">
+    <label for="when">Tránsitos para</label>
+    <input type="datetime-local" id="when" step="60">
+    <div class="steps" role="group" aria-label="Mover la fecha">
+      <button type="button" data-step="-1y">−1 año</button>
+      <button type="button" data-step="-1m">−1 mes</button>
+      <button type="button" data-step="-1d">−1 día</button>
+      <button type="button" class="now" id="now">Ahora</button>
+      <button type="button" data-step="1d">+1 día</button>
+      <button type="button" data-step="1m">+1 mes</button>
+      <button type="button" data-step="1y">+1 año</button>
+    </div>
+    <p class="readout" id="readout"></p>
+  </section>
+
+  <div class="grid">
+    <figure class="wheel">
+      <svg id="wheel" viewBox="0 0 1000 1000" role="img" aria-labelledby="wheel-title"><title id="wheel-title">Rueda natal con los tránsitos de la fecha elegida</title></svg>
+      <figcaption>
+        <div class="legend">
+          <span><span class="gl" style="color:var(--ink)">☉&#xFE0E;</span> dentro: tu carta natal</span>
+          <span><span class="gl" style="color:var(--transit)">☉&#xFE0E;</span> fuera: el cielo de la fecha</span>
+          <span><span class="sw" style="background:var(--tens)"></span> cuadratura, oposición</span>
+          <span><span class="sw" style="background:var(--harm)"></span> trígono, sextil</span>
+          <span><span class="sw" style="background:var(--conj)"></span> conjunción</span>
+        </div>
+        <div class="wheel-tools">
+          Líneas del centro:
+          <div class="seg" role="group" aria-label="Líneas del centro">
+            <button type="button" id="mode-t" aria-pressed="true">Tránsitos a tu carta</button>
+            <button type="button" id="mode-n" aria-pressed="false">Aspectos natales</button>
+          </div>
+        </div>
+      </figcaption>
+    </figure>
+
+    <section class="panel" aria-labelledby="asp-h">
+      <div class="panel-head">
+        <h2 id="asp-h">Tránsitos activos</h2>
+        <label class="check"><input type="checkbox" id="moon" checked> Incluir la Luna</label>
+      </div>
+      <ul class="asp" id="aspList"></ul>
+    </section>
+  </div>
+
+  <section class="panel" aria-labelledby="pos-h">
+    <h2 id="pos-h">Posiciones</h2>
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr><th>Punto</th><th>Natal</th><th>Casa</th><th class="tcol">Tránsito</th><th class="tcol">En tu casa</th></tr></thead>
+        <tbody id="posBody"></tbody>
+      </table>
+    </div>
+    <details>
+      <summary>Cúspides de tus casas</summary>
+      <div class="cusps" id="cusps"></div>
+    </details>
+  </section>
+
+  <footer>
+    Se calcula en tu navegador cada vez que abres la página, con Astronomy Engine. Está contrastado con Swiss Ephemeris: los planetas salen con menos de un minuto de arco de diferencia y las casas, exactas. Zodiaco tropical, casas Plácidus y nodo lunar verdadero. Orbe de los tránsitos: 3° (2° el sextil); aspectos natales: 8° (6° el sextil). La fecha usa la hora de tu dispositivo.
+  </footer>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/astronomy-engine@2.1.19/astronomy.browser.min.js"></script>
+<script src="carta-core.js"></script>
+<script>
+(function () {
+  const VS = '︎';
+  const BIRTH = window.CartaBirth && CartaBirth.get();
+  if (!BIRTH) { if (window.CartaBirth) CartaBirth.showSetup(document.querySelector('.wrap')); return; }
+  document.getElementById('who').textContent = BIRTH.nombre || 'Carta natal';
+  document.getElementById('birthline').textContent = CartaBirth.describe(BIRTH);
+  if (BIRTH.nombre) document.title = 'Carta natal de ' + BIRTH.nombre;
+  const PL = {
+    sun: ['Sol', '☉'], moon: ['Luna', '☽'], mercury: ['Mercurio', '☿'], venus: ['Venus', '♀'], mars: ['Marte', '♂'],
+    jupiter: ['Júpiter', '♃'], saturn: ['Saturno', '♄'], uranus: ['Urano', '♅'], neptune: ['Neptuno', '♆'],
+    pluto: ['Plutón', '♇'], node: ['Nodo norte', '☊'], asc: ['Ascendente', 'AC'], mc: ['Medio Cielo', 'MC']
+  };
+  const ORDER = ['sun', 'moon', 'mercury', 'venus', 'mars', 'jupiter', 'saturn', 'uranus', 'neptune', 'pluto', 'node'];
+  const SIGNS = [
+    ['Aries', '♈', 'fire'], ['Tauro', '♉', 'earth'], ['Géminis', '♊', 'air'], ['Cáncer', '♋', 'water'],
+    ['Leo', '♌', 'fire'], ['Virgo', '♍', 'earth'], ['Libra', '♎', 'air'], ['Escorpio', '♏', 'water'],
+    ['Sagitario', '♐', 'fire'], ['Capricornio', '♑', 'earth'], ['Acuario', '♒', 'air'], ['Piscis', '♓', 'water']
+  ];
+  const ASPECTS = [
+    { a: 0, n: 'conjunción', g: '☌', k: 'conj', tOrb: 3, nOrb: 8 },
+    { a: 60, n: 'sextil', g: '⚹', k: 'harm', tOrb: 2, nOrb: 6 },
+    { a: 90, n: 'cuadratura', g: '□', k: 'tens', tOrb: 3, nOrb: 8 },
+    { a: 120, n: 'trígono', g: '△', k: 'harm', tOrb: 3, nOrb: 8 },
+    { a: 180, n: 'oposición', g: '☍', k: 'tens', tOrb: 3, nOrb: 8 }
+  ];
+  const COLOR = { conj: 'var(--conj)', harm: 'var(--harm)', tens: 'var(--tens)' };
+  const wheel = document.getElementById('wheel');
+
+  if (!window.Astronomy || !window.AstroCore) {
+    wheel.outerHTML = '<p class="err">No se ha podido cargar la librería de cálculo astronómico. Comprueba la conexión y vuelve a abrir la página.</p>';
+    return;
+  }
+  const C = window.AstroCore, norm = C.norm;
+
+  // ---------- natal (fijo) ----------
+  const natal = C.positions(BIRTH.date);
+  const H = C.houses(BIRTH.date, BIRTH.lat, BIRTH.lon);
+  natal.asc = { lon: H.asc, speed: 0, retro: false };
+  natal.mc = { lon: H.mc, speed: 0, retro: false };
+  const ASC = H.asc;
+
+  // ---------- utilidades ----------
+  const signOf = lon => SIGNS[Math.floor(norm(lon) / 30)];
+  function dm(lon) {
+    const x = norm(lon) % 30;
+    let d = Math.floor(x), m = Math.round((x - d) * 60);
+    if (m === 60) { d += 1; m = 0; }
+    return { d, m, txt: `${d}°${String(m).padStart(2, '0')}′` };
+  }
+  const orbTxt = o => { const d = Math.floor(o), m = Math.round((o - d) * 60); return m === 60 ? `${d + 1}°00′` : `${d}°${String(m).padStart(2, '0')}′`; };
+  const glyph = k => (PL[k][1].length === 1 ? PL[k][1] + VS : PL[k][1]);
+  const sGlyph = s => s[1] + VS;
+  const sep = (a, b) => { const d = norm(a - b); return d > 180 ? 360 - d : d; };
+  const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+  // Big three
+  document.getElementById('big3').innerHTML = [['Sol', natal.sun.lon], ['Luna', natal.moon.lon], ['Ascendente', ASC]].map(([n, l]) => {
+    const s = signOf(l);
+    return `<div><dt>${n}</dt><dd><span class="gl">${sGlyph(s)}</span> ${s[0]} ${dm(l).txt}</dd></div>`;
+  }).join('');
+
+  // Cúspides
+  document.getElementById('cusps').innerHTML = H.cusps.slice(1).map((c, i) => {
+    const s = signOf(c);
+    return `<div><span>Casa ${i + 1}</span> <span class="gl" style="color:var(--ink);min-width:0">${sGlyph(s)}</span> ${dm(c).txt}</div>`;
+  }).join('');
+
+  // ---------- aspectos ----------
+  function transitAspects(tr, includeMoon) {
+    const out = [];
+    const natalKeys = [...ORDER, 'asc', 'mc'];
+    for (const tk of ORDER) {
+      if (!includeMoon && tk === 'moon') continue;
+      const t = tr[tk];
+      for (const nk of natalKeys) {
+        const n = natal[nk].lon;
+        const s = sep(t.lon, n);
+        for (const A of ASPECTS) {
+          if (tk === 'node' && A.a !== 0 && A.a !== 180) continue;
+          const orb = Math.abs(s - A.a);
+          if (orb <= A.tOrb) {
+            const s2 = sep(t.lon + t.speed * 0.25, n);
+            const applying = Math.abs(s2 - A.a) < orb;
+            out.push({ tk, nk, A, orb, applying, tLon: t.lon, nLon: n });
+          }
+        }
+      }
+    }
+    return out.sort((x, y) => x.orb - y.orb);
+  }
+  function natalAspects() {
+    const out = [];
+    const keys = ORDER.filter(k => k !== 'node');
+    for (let i = 0; i < keys.length; i++) for (let j = i + 1; j < keys.length; j++) {
+      const a = natal[keys[i]].lon, b = natal[keys[j]].lon, s = sep(a, b);
+      for (const A of ASPECTS) {
+        const orb = Math.abs(s - A.a);
+        if (orb <= A.nOrb) out.push({ A, orb, aLon: a, bLon: b });
+      }
+    }
+    return out;
+  }
+  const NATAL_ASP = natalAspects();
+
+  // ---------- rueda ----------
+  const CX = 500, CY = 500;
+  const R = { out: 492, zOut: 402, zIn: 346, hIn: 316, asp: 214 };
+  const D2R = Math.PI / 180;
+  function pt(lon, r) { const f = (lon - ASC) * D2R; return [CX - r * Math.cos(f), CY + r * Math.sin(f)]; }
+  const f1 = n => n.toFixed(1);
+  function line(l1, r1, l2, r2, cls, extra = '') { const [x1, y1] = pt(l1, r1), [x2, y2] = pt(l2, r2); return `<line x1="${f1(x1)}" y1="${f1(y1)}" x2="${f1(x2)}" y2="${f1(y2)}" class="${cls}" ${extra}/>`; }
+  function text(lon, r, s, cls, extra = '') { const [x, y] = pt(lon, r); return `<text x="${f1(x)}" y="${f1(y)}" class="${cls}" text-anchor="middle" dominant-baseline="central" ${extra}>${s}</text>`; }
+  function sector(a, b, r1, r2, fill) {
+    const [x1, y1] = pt(a, r2), [x2, y2] = pt(b, r2), [x3, y3] = pt(b, r1), [x4, y4] = pt(a, r1);
+    return `<path d="M${f1(x1)} ${f1(y1)} A${r2} ${r2} 0 0 0 ${f1(x2)} ${f1(y2)} L${f1(x3)} ${f1(y3)} A${r1} ${r1} 0 0 1 ${f1(x4)} ${f1(y4)} Z" fill="${fill}" class="z-ring"/>`;
+  }
+  // separa glifos que caen muy juntos (relajación circular)
+  function spread(items, minSep) {
+    const arr = items.map(o => ({ ...o, disp: o.lon })).sort((a, b) => a.lon - b.lon);
+    if (arr.length < 2) return arr;
+    for (let pass = 0; pass < 200; pass++) {
+      let moved = false;
+      for (let i = 0; i < arr.length; i++) {
+        const a = arr[i], b = arr[(i + 1) % arr.length];
+        const gap = norm(b.disp - a.disp);
+        if (gap < minSep) {
+          const push = (minSep - gap) / 2 + 0.01;
+          a.disp = norm(a.disp - push); b.disp = norm(b.disp + push); moved = true;
+        }
+      }
+      if (!moved) break;
+    }
+    return arr;
+  }
+
+  function drawWheel(tr, tAsps, mode) {
+    let s = '';
+    s += `<circle cx="${CX}" cy="${CY}" r="${R.out}" class="ring" fill="var(--surface)"/>`;
+    // zodiaco
+    SIGNS.forEach((sg, i) => { s += sector(i * 30, i * 30 + 30, R.zIn, R.zOut, `var(--${sg[2]})`); });
+    for (let d = 0; d < 360; d++) {
+      const len = d % 10 === 0 ? 12 : d % 5 === 0 ? 8 : 4;
+      s += line(d, R.zIn, d, R.zIn + len, 'tick');
+    }
+    SIGNS.forEach((sg, i) => { s += text(i * 30 + 15, (R.zIn + R.zOut) / 2 + 4, sGlyph(sg), 's-sign', `aria-label="${sg[0]}"`); });
+    s += `<circle cx="${CX}" cy="${CY}" r="${R.zOut}" class="ring-strong"/><circle cx="${CX}" cy="${CY}" r="${R.zIn}" class="ring-strong"/>`;
+    s += `<circle cx="${CX}" cy="${CY}" r="${R.hIn}" class="ring"/>`;
+    s += `<circle cx="${CX}" cy="${CY}" r="${R.asp}" class="ring inner"/>`;
+    // casas
+    for (let h = 1; h <= 12; h++) {
+      const c = H.cusps[h], nx = H.cusps[h === 12 ? 1 : h + 1];
+      const isAxis = h === 1 || h === 4 || h === 7 || h === 10;
+      s += line(c, R.asp, c, R.zIn, isAxis ? 'axis' : 'cusp');
+      s += text(c + norm(nx - c) / 2, (R.hIn + R.zIn) / 2, h, 's-house');
+    }
+    [['AC', H.cusps[1]], ['FC', H.cusps[4]], ['DC', H.cusps[7]], ['MC', H.cusps[10]]].forEach(([lab, l]) => {
+      s += text(l + 6, R.asp - 20, lab, 's-axis');
+    });
+    // líneas de aspectos
+    if (mode === 't') {
+      for (const x of tAsps) {
+        const col = COLOR[x.A.k], w = (1 + 2.2 * (1 - x.orb / x.A.tOrb)).toFixed(2);
+        if (x.A.a === 0) { const [cx, cy] = pt(x.nLon, R.asp); s += `<circle cx="${f1(cx)}" cy="${f1(cy)}" r="9" fill="none" stroke="${col}" stroke-width="${w}" class="aspline"/>`; }
+        else s += line(x.tLon, R.asp, x.nLon, R.asp, 'aspline', `stroke="${col}" stroke-width="${w}" opacity=".85"`);
+      }
+    } else {
+      for (const x of NATAL_ASP) {
+        if (x.A.a === 0) continue;
+        const col = COLOR[x.A.k], w = (0.8 + 1.6 * (1 - x.orb / x.A.nOrb)).toFixed(2);
+        s += line(x.aLon, R.asp, x.bLon, R.asp, 'aspline', `stroke="${col}" stroke-width="${w}" opacity=".8"`);
+      }
+    }
+    // planetas natales
+    const nItems = spread(ORDER.map(k => ({ k, lon: natal[k].lon })), 8.2);
+    for (const it of nItems) {
+      s += line(it.lon, R.hIn, it.lon, R.hIn - 9, 'tick');
+      if (Math.abs(norm(it.disp - it.lon + 180) - 180) > 0.4) s += line(it.lon, R.hIn - 9, it.disp, R.hIn - 16, 'lead');
+      s += text(it.disp, R.hIn - 36, glyph(it.k), 's-natal', `aria-label="${PL[it.k][0]} natal"`);
+      s += text(it.disp, R.hIn - 66, `${dm(it.lon).d}°`, 's-deg');
+      const [x, y] = pt(it.lon, R.asp); s += `<circle cx="${f1(x)}" cy="${f1(y)}" r="3.2" class="dot-n"/>`;
+    }
+    // planetas en tránsito
+    const tItems = spread(ORDER.map(k => ({ k, lon: tr[k].lon })), 7.4);
+    for (const it of tItems) {
+      s += line(it.lon, R.zOut, it.lon, R.zOut + 10, 'lead-t');
+      if (Math.abs(norm(it.disp - it.lon + 180) - 180) > 0.4) s += line(it.lon, R.zOut + 10, it.disp, R.zOut + 18, 'lead-t');
+      s += text(it.disp, R.zOut + 38, glyph(it.k), 's-transit', `aria-label="${PL[it.k][0]} en tránsito"`);
+      s += text(it.disp, R.zOut + 70, `${dm(it.lon).d}°${tr[it.k].retro ? '℞' : ''}`, 's-degt');
+      const [x, y] = pt(it.lon, R.asp); s += `<circle cx="${f1(x)}" cy="${f1(y)}" r="3.6" class="dot-t"/>`;
+    }
+    wheel.innerHTML = `<title id="wheel-title">Rueda natal con los tránsitos de la fecha elegida</title>` + s;
+  }
+
+  // ---------- lista y tabla ----------
+  function renderList(tr, asps) {
+    const ul = document.getElementById('aspList');
+    if (!asps.length) { ul.innerHTML = '<li class="empty" style="display:block">No hay tránsitos dentro del orbe en esta fecha.</li>'; return; }
+    ul.innerHTML = asps.map(x => {
+      const t = tr[x.tk], ts = signOf(t.lon);
+      const target = x.nk === 'asc' ? 'tu Ascendente' : x.nk === 'mc' ? 'tu Medio Cielo' : `tu ${PL[x.nk][0]}`;
+      const slow = ['jupiter', 'saturn', 'uranus', 'neptune', 'pluto'].includes(x.tk);
+      return `<li style="--c:${COLOR[x.A.k]}">
+        <div class="line"><span class="gl t">${glyph(x.tk)}</span> <span class="t">${PL[x.tk][0]}${t.retro ? ' ℞' : ''}</span>
+          <span class="a"><span class="gl">${x.A.g}${VS}</span> ${x.A.n}</span> a ${target} <span class="gl">${x.nk === 'asc' || x.nk === 'mc' ? '' : glyph(x.nk)}</span>${slow ? '<span class="tag" style="color:var(--muted)">lento</span>' : ''}</div>
+        <div class="meta">orbe ${orbTxt(x.orb)} · ${x.applying ? 'se acerca' : 'se aleja'} · ${PL[x.tk][0]} en ${ts[0]} ${dm(t.lon).txt}, tu casa ${C.houseOf(t.lon, H.cusps)}</div>
+      </li>`;
+    }).join('');
+  }
+  function renderTable(tr) {
+    const rows = [...ORDER, 'asc', 'mc'].map(k => {
+      const n = natal[k], ns = signOf(n.lon);
+      const nh = k === 'asc' ? 1 : k === 'mc' ? 10 : C.houseOf(n.lon, H.cusps);
+      let tcells = '<td class="num tcol">—</td><td class="tcol">—</td>';
+      if (tr[k]) {
+        const t = tr[k], ts = signOf(t.lon);
+        tcells = `<td class="num tcol"><span class="gl">${sGlyph(ts)}</span> ${ts[0]} ${dm(t.lon).txt}${t.retro ? '<span class="rx">℞</span>' : ''}</td><td class="tcol">${C.houseOf(t.lon, H.cusps)}</td>`;
+      }
+      return `<tr><td><span class="gl">${glyph(k)}</span> ${PL[k][0]}</td><td class="num"><span class="gl">${sGlyph(ns)}</span> ${ns[0]} ${dm(n.lon).txt}</td><td>${nh}</td>${tcells}</tr>`;
+    });
+    document.getElementById('posBody').innerHTML = rows.join('');
+  }
+
+  // ---------- estado ----------
+  const input = document.getElementById('when');
+  const readout = document.getElementById('readout');
+  const moonBox = document.getElementById('moon');
+  const btnT = document.getElementById('mode-t'), btnN = document.getElementById('mode-n');
+  let when = new Date(), mode = 't';
+  const pad = n => String(n).padStart(2, '0');
+  const toLocalInput = d => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  const fmtLong = new Intl.DateTimeFormat('es-ES', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+
+  function update() {
+    const tr = C.positions(when);
+    const asps = transitAspects(tr, moonBox.checked);
+    drawWheel(tr, asps, mode);
+    renderList(tr, asps);
+    renderTable(tr);
+    input.value = toLocalInput(when);
+    readout.innerHTML = `Cielo del <strong>${esc(fmtLong.format(when))}</strong>`;
+  }
+  input.addEventListener('change', () => { if (input.value) { const d = new Date(input.value); if (!isNaN(d)) { when = d; update(); } } });
+  document.querySelectorAll('[data-step]').forEach(b => b.addEventListener('click', () => {
+    const m = b.dataset.step.match(/^(-?\d+)([dmy])$/), n = +m[1], d = new Date(when);
+    if (m[2] === 'd') d.setDate(d.getDate() + n); else if (m[2] === 'm') d.setMonth(d.getMonth() + n); else d.setFullYear(d.getFullYear() + n);
+    when = d; update();
+  }));
+  document.getElementById('now').addEventListener('click', () => { when = new Date(); update(); });
+  moonBox.addEventListener('change', update);
+  function setMode(m) { mode = m; btnT.setAttribute('aria-pressed', m === 't'); btnN.setAttribute('aria-pressed', m === 'n'); update(); }
+  btnT.addEventListener('click', () => setMode('t'));
+  btnN.addEventListener('click', () => setMode('n'));
+  update();
+})();
+</script>
+
+</body></html>

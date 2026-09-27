@@ -1,0 +1,238 @@
+<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>La Luna</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&family=Marcellus&family=Noto+Sans+Symbols&family=Noto+Sans+Symbols+2&display=swap">
+<style>
+  :root {
+    --bg: #ECEEF3; --surface: #F8F9FB; --ink: #1A2030; --muted: #5A6377; --rule: #C9CFDA; --faint: #DFE3EA;
+    --transit: #2A54C6; --harm: #1F7D6C; --tens: #BC3D35; --conj: #8A6810;
+    --lit: #F3EAD2; --lit-edge: #C9B88E; --dark: #2B3142; --mare: #B9A97F;
+    --display: "Marcellus", "Cormorant Garamond", Georgia, serif;
+    --body: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+    --mono: "IBM Plex Mono", ui-monospace, Consolas, monospace;
+    --glyph: "Noto Sans Symbols", "Noto Sans Symbols 2", "Segoe UI Symbol", "Apple Symbols", "DejaVu Sans", sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      color-scheme: dark;
+      --bg: #0F121A; --surface: #161A24; --ink: #E3E6EE; --muted: #98A0B3; --rule: #2C3344; --faint: #1E2331;
+      --transit: #8AA8FF; --harm: #52C3AD; --tens: #F07D72; --conj: #D8B14E;
+      --dark: #232837; --lit: #EFE5CB;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 14px/1.45 var(--body); }
+  .gl { font-family: var(--glyph); font-weight: 400; }
+  .bar { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 8px; }
+  input[type="date"] { font: 13px var(--mono); color: var(--ink); background: var(--surface); border: 1px solid var(--rule); border-radius: 6px; padding: 4px 6px; }
+  button { font: 500 12.5px var(--body); color: var(--ink); background: var(--surface); border: 1px solid var(--rule); border-radius: 6px; padding: 4px 8px; cursor: pointer; line-height: 1.3; }
+  button:hover { border-color: var(--muted); }
+  button:focus-visible, input:focus-visible { outline: 2px solid var(--transit); outline-offset: 2px; }
+  button.arrow { font-size: 16px; padding: 1px 9px; }
+  button.now { background: var(--transit); color: var(--surface); border-color: var(--transit); }
+  .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+  main { container-type: inline-size; padding-bottom: 12px; }
+  .hero { display: grid; grid-template-columns: minmax(110px, 190px) 1fr; gap: 14px; align-items: center; margin: 4px 8px 0; padding: 12px; background: var(--surface); border: 1px solid var(--rule); border-radius: 10px; }
+  .hero svg { width: 100%; height: auto; display: block; }
+  .phase { font: 400 24px/1.1 var(--display); margin: 0 0 4px; }
+  .facts { margin: 0; display: grid; grid-template-columns: auto 1fr; gap: 2px 10px; font-size: 13px; }
+  .facts dt { color: var(--muted); }
+  .facts dd { margin: 0; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .touch { margin-top: 8px; font-size: 12.5px; color: var(--muted); }
+  .touch b { font-weight: 500; }
+  h2 { font: 400 17px/1.2 var(--display); margin: 14px 8px 6px; }
+  ul.next { list-style: none; margin: 0 8px; padding: 0; display: grid; gap: 5px; }
+  ul.next li { display: grid; grid-template-columns: 30px 1fr; align-items: center; gap: 8px; background: var(--surface); border: 1px solid var(--rule); border-radius: 8px; padding: 6px 9px; }
+  ul.next svg { width: 26px; height: 26px; }
+  ul.next .n { font-weight: 500; }
+  ul.next .m { font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
+  ul.next .hit { color: var(--conj); font-weight: 500; }
+  .month { margin: 0 8px; display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px; background: var(--surface); border: 1px solid var(--rule); border-radius: 10px; padding: 8px; }
+  .month .dow { font-size: 10.5px; color: var(--muted); text-align: center; }
+  .month button { border: 1px solid transparent; background: transparent; padding: 3px 0 2px; display: flex; flex-direction: column; align-items: center; gap: 1px; font: 11px var(--mono); color: var(--muted); border-radius: 6px; }
+  .month button svg { width: 100%; max-width: 24px; height: auto; }
+  .month button.q { color: var(--ink); font-weight: 500; }
+  .month button.sel { border-color: var(--transit); color: var(--transit); }
+  .month button.today { background: var(--faint); }
+  .mhead { display: flex; justify-content: space-between; align-items: baseline; margin: 14px 8px 6px; }
+  .mhead h2 { margin: 0; }
+  .mhead span { font-size: 12.5px; color: var(--muted); }
+  .ecl { margin: 10px 8px 0; font-size: 12.5px; color: var(--muted); }
+  .err { margin: 16px; padding: 16px; border: 1px solid var(--tens); color: var(--tens); border-radius: 8px; }
+  @container (max-width: 330px) { .hero { grid-template-columns: 1fr; justify-items: center; text-align: center; } .hero svg { max-width: 160px; } .facts { text-align: left; } }
+  @container (min-width: 640px) { .cols { display: grid; grid-template-columns: 1fr 1fr; gap: 0 4px; } }
+</style></head><body>
+<main>
+  <nav class="bar" aria-label="Fecha">
+    <button type="button" class="arrow" data-step="-1" aria-label="Día anterior">‹</button>
+    <label class="sr" for="when">Fecha</label>
+    <input type="date" id="when">
+    <button type="button" class="arrow" data-step="1" aria-label="Día siguiente">›</button>
+    <button type="button" class="now" id="now">Hoy</button>
+  </nav>
+  <section class="hero" aria-live="polite">
+    <div id="disc"></div>
+    <div>
+      <p class="phase" id="phase"></p>
+      <dl class="facts" id="facts"></dl>
+      <p class="touch" id="touch"></p>
+    </div>
+  </section>
+  <div class="cols">
+    <section>
+      <h2>Próximas fases</h2>
+      <ul class="next" id="next"></ul>
+      <p class="ecl" id="ecl"></p>
+    </section>
+    <section>
+      <div class="mhead"><h2>El mes</h2><span id="mname"></span></div>
+      <div class="month" id="month"></div>
+    </section>
+  </div>
+</main>
+<script src="https://cdn.jsdelivr.net/npm/astronomy-engine@2.1.19/astronomy.browser.min.js"></script>
+<script src="carta-core.js"></script>
+<script>
+(function () {
+  const $ = id => document.getElementById(id);
+  const A = window.Astronomy;
+  if (!A) { document.querySelector('main').innerHTML = '<p class="err">No se ha podido cargar la librería de cálculo astronómico. Comprueba la conexión y vuelve a abrir la página.</p>'; return; }
+  const VS = '\uFE0E';
+  const norm = x => ((x % 360) + 360) % 360;
+  const SIGNS = [['Aries','♈'],['Tauro','♉'],['Géminis','♊'],['Cáncer','♋'],['Leo','♌'],['Virgo','♍'],['Libra','♎'],['Escorpio','♏'],['Sagitario','♐'],['Capricornio','♑'],['Acuario','♒'],['Piscis','♓']];
+  const ROM = ['I','II','III','IV','V','VI','VII','VIII','IX','X','XI','XII'];
+  // Tu carta natal, calculada con los datos del enlace (#fecha=…&hora=…&utc=…&lat=…&lon=…)
+  const BIRTH = window.CartaBirth ? CartaBirth.get() : null;
+  const NATAL = {}; let CUSPS = null;
+  if (BIRTH && window.AstroCore) {
+    const P = AstroCore.positions(BIRTH.date), HH = AstroCore.houses(BIRTH.date, BIRTH.lat, BIRTH.lon);
+    for (const k in P) NATAL[k] = P[k].lon;
+    NATAL.asc = HH.asc; NATAL.mc = HH.mc; CUSPS = HH.cusps.slice(1);
+  }
+  const NAMES = { sun: ['tu Sol','☉'], moon: ['tu Luna','☽'], mercury: ['tu Mercurio','☿'], venus: ['tu Venus','♀'], mars: ['tu Marte','♂'], jupiter: ['tu Júpiter','♃'], saturn: ['tu Saturno','♄'], uranus: ['tu Urano','♅'], neptune: ['tu Neptuno','♆'], pluto: ['tu Plutón','♇'], node: ['tu Nodo Norte','☊'], asc: ['tu Ascendente','AC'], mc: ['tu Medio Cielo','MC'] };
+  const ASP = [[0,'conjunción','☌'],[60,'sextil','⚹'],[90,'cuadratura','□'],[120,'trígono','△'],[180,'oposición','☍']];
+  const QN = ['Luna nueva','Cuarto creciente','Luna llena','Cuarto menguante'];
+  const QA = [0, 90, 180, 270];
+
+  const moonLon = d => norm(A.EclipticGeoMoon(d).lon);
+  const signOf = l => SIGNS[Math.floor(norm(l) / 30)];
+  const dm = l => { const x = norm(l) % 30; let d = Math.floor(x), m = Math.round((x - d) * 60); if (m === 60) { d++; m = 0; } return `${d}°${String(m).padStart(2, '0')}′`; };
+  const houseOf = l => { for (let h = 0; h < 12; h++) { const a = CUSPS[h], b = CUSPS[(h + 1) % 12]; if (norm(l - a) < norm(b - a)) return h; } return 11; };
+  const sep = (a, b) => { const d = norm(a - b); return d > 180 ? 360 - d : d; };
+  function phaseName(p) {
+    if (p < 6 || p >= 354) return 'Luna nueva';
+    if (p < 84) return 'Luna creciente';
+    if (p < 96) return 'Cuarto creciente';
+    if (p < 174) return 'Gibosa creciente';
+    if (p < 186) return 'Luna llena';
+    if (p < 264) return 'Gibosa menguante';
+    if (p < 276) return 'Cuarto menguante';
+    return 'Luna menguante';
+  }
+  // Disco de la Luna iluminado según el ángulo de fase (vista desde el hemisferio norte)
+  function disc(p, size, detail) {
+    const c = size / 2, r = size / 2 - (detail ? 3 : 1);
+    const x = Math.abs(r * Math.cos(p * Math.PI / 180)).toFixed(2);
+    const top = `${c} ${c - r}`, bot = `${c} ${c + r}`;
+    let path;
+    if (p < 180) path = `M${top} A${r} ${r} 0 0 1 ${bot} A${x} ${r} 0 0 ${p < 90 ? 0 : 1} ${top}Z`;
+    else path = `M${top} A${r} ${r} 0 0 0 ${bot} A${x} ${r} 0 0 ${p < 270 ? 0 : 1} ${top}Z`;
+    const id = 'm' + Math.random().toString(36).slice(2, 8);
+    let s = `<svg viewBox="0 0 ${size} ${size}" role="img" aria-label="${phaseName(p)}"><defs><clipPath id="${id}"><path d="${path}"/></clipPath></defs>`;
+    s += `<circle cx="${c}" cy="${c}" r="${r}" fill="var(--dark)"/>`;
+    s += `<g clip-path="url(#${id})"><circle cx="${c}" cy="${c}" r="${r}" fill="var(--lit)"/>`;
+    if (detail) {
+      const k = r / 100;
+      [[-28,-30,22],[8,-38,15],[22,-8,20],[-12,8,14],[-35,20,11],[30,30,9],[-4,42,8]].forEach(([dx, dy, rr]) => {
+        s += `<circle cx="${c + dx * k}" cy="${c + dy * k}" r="${rr * k}" fill="var(--mare)" opacity=".35"/>`;
+      });
+    }
+    s += `</g><circle cx="${c}" cy="${c}" r="${r}" fill="none" stroke="var(--lit-edge)" stroke-width="${detail ? 1.5 : 0.8}" opacity=".7"/></svg>`;
+    return s;
+  }
+  const fmtDay = new Intl.DateTimeFormat('es-ES', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+  const fmtDate = new Intl.DateTimeFormat('es-ES', { day: 'numeric', month: 'long', year: 'numeric' });
+  const fmtMonth = new Intl.DateTimeFormat('es-ES', { month: 'long', year: 'numeric' });
+
+  function natalHits(lon, orbMax) {
+    const out = [];
+    for (const k in NATAL) for (const [a, n, g] of ASP) {
+      if (k === 'node' && a !== 0 && a !== 180) continue;
+      const o = Math.abs(sep(lon, NATAL[k]) - a);
+      if (o <= orbMax) out.push({ k, n, g, o });
+    }
+    return out.sort((x, y) => x.o - y.o);
+  }
+
+  let when = new Date(); when.setHours(12, 0, 0, 0);
+  const input = $('when');
+  const pad = n => String(n).padStart(2, '0');
+
+  function renderHero() {
+    const isToday = sameDay(when, new Date()); const ref = isToday ? new Date() : when;
+    const p = A.MoonPhase(ref);
+    const lon = moonLon(ref), s = signOf(lon);
+    const illum = A.Illumination('Moon', ref).phase_fraction * 100;
+    $('disc').innerHTML = disc(p, 200, true);
+    $('phase').textContent = phaseName(p);
+    $('facts').innerHTML = `
+      <dt>Iluminada</dt><dd>${illum.toFixed(0)} %</dd>
+      <dt>Edad</dt><dd>${(p / 360 * 29.53).toFixed(1).replace('.', ',')} días</dd>
+      <dt>En</dt><dd><span class="gl">${s[1]}${VS}</span> ${s[0]} ${dm(lon)}</dd>
+      ${CUSPS ? `<dt>Tu casa</dt><dd>${ROM[houseOf(lon)]}</dd>` : ''}`;
+    const hits = natalHits(lon, 4);
+    if (!BIRTH) { $('touch').textContent = 'Si añades tus datos de nacimiento al enlace, aquí verás qué puntos de tu carta toca la Luna.'; return; }
+    $('touch').innerHTML = hits.length
+      ? (isToday ? 'Hoy toca ' : 'Ese día toca ') + hits.slice(0, 3).map(h => `<b><span class="gl">${h.g}${VS}</span> ${NAMES[h.k][0]}</b>`).join(', ')
+      : (isToday ? 'Hoy' : 'Ese día') + ' no toca ningún punto de tu carta.';
+  }
+  function renderNext() {
+    let q = A.SearchMoonQuarter(when);
+    const items = [];
+    for (let i = 0; i < 4; i++) {
+      const d = q.time.date, lon = moonLon(d), s = signOf(lon);
+      const hit = natalHits(lon, 3).filter(h => h.n === 'conjunción' || h.n === 'oposición')[0];
+      items.push(`<li>${disc(QA[q.quarter], 30, false)}<div><div class="n">${QN[q.quarter]} <span class="gl">${s[1]}${VS}</span> ${s[0]} ${Math.floor(norm(lon) % 30)}°</div>
+        <div class="m">${fmtDay.format(d)}${CUSPS ? ' · tu casa ' + ROM[houseOf(lon)] : ''}${hit ? ` · <span class="hit">${hit.g}${VS} ${NAMES[hit.k][0]}</span>` : ''}</div></div></li>`);
+      q = A.NextMoonQuarter(q);
+    }
+    $('next').innerHTML = items.join('');
+    // eclipses
+    const le = A.SearchLunarEclipse(when), se = A.SearchGlobalSolarEclipse(when);
+    const LK = { penumbral: 'penumbral', partial: 'parcial', total: 'total' };
+    const SK = { partial: 'parcial', annular: 'anular', total: 'total', hybrid: 'híbrido' };
+    const lD = le.peak.date, sD = se.peak.date;
+    const first = lD < sD ? `eclipse de Luna ${LK[le.kind] || ''} el ${fmtDate.format(lD)}, en ${signOf(moonLon(lD))[0]}` : `eclipse de Sol ${SK[se.kind] || ''} el ${fmtDate.format(sD)}, en ${signOf(moonLon(sD))[0]}`;
+    $('ecl').textContent = 'Próximo eclipse: ' + first + '.';
+  }
+  function sameDay(a, b) { return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate(); }
+  function renderMonth() {
+    const y = when.getFullYear(), m = when.getMonth();
+    const days = new Date(y, m + 1, 0).getDate();
+    const offset = (new Date(y, m, 1).getDay() + 6) % 7;
+    // días con fase exacta
+    const qDays = {};
+    let q = A.SearchMoonQuarter(new Date(y, m, 1));
+    while (q.time.date < new Date(y, m + 1, 1)) { qDays[q.time.date.getDate()] = QN[q.quarter]; q = A.NextMoonQuarter(q); }
+    const today = new Date();
+    let h = ['L','M','X','J','V','S','D'].map(d => `<div class="dow">${d}</div>`).join('');
+    h += '<div></div>'.repeat(offset);
+    for (let d = 1; d <= days; d++) {
+      const dt = new Date(y, m, d, 12);
+      const cls = [qDays[d] ? 'q' : '', sameDay(dt, when) ? 'sel' : '', sameDay(dt, today) ? 'today' : ''].join(' ');
+      h += `<button type="button" class="${cls}" data-day="${d}" title="${qDays[d] || phaseName(A.MoonPhase(dt))}">${disc(A.MoonPhase(dt), 24, false)}${d}</button>`;
+    }
+    $('month').innerHTML = h;
+    { const t = fmtMonth.format(when); $('mname').textContent = t.charAt(0).toUpperCase() + t.slice(1); }
+    $('month').querySelectorAll('[data-day]').forEach(b => b.addEventListener('click', () => { when = new Date(y, m, +b.dataset.day, 12); update(); }));
+  }
+  function update() {
+    input.value = `${when.getFullYear()}-${pad(when.getMonth() + 1)}-${pad(when.getDate())}`;
+    renderHero(); renderNext(); renderMonth();
+  }
+  input.addEventListener('change', () => { if (input.value) { const [y, m, d] = input.value.split('-').map(Number); when = new Date(y, m - 1, d, 12); update(); } });
+  document.querySelectorAll('[data-step]').forEach(b => b.addEventListener('click', () => { when = new Date(when); when.setDate(when.getDate() + +b.dataset.step); update(); }));
+  $('now').addEventListener('click', () => { when = new Date(); when.setHours(12, 0, 0, 0); update(); });
+  update();
+})();
+</script>
+</body></html>
