@@ -1,0 +1,208 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bloc de notas</title>
+<style>
+:root { --bg:#fff; --card:#f7f7f5; --text:#37352f; --muted:#787774; --line:#e9e9e7; --thumb:#d3d1cb; --warn:#b35c00; --ok:#2e7d4f; }
+@media (prefers-color-scheme: dark) { :root { --bg:#191919; --card:#232323; --text:#e8e7e4; --muted:#9b9a97; --line:#303030; --thumb:#4a4a4a; --warn:#e0a458; --ok:#6fbf8e; } }
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text); }
+body { font: 14px/1.4 ui-sans-serif, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; -webkit-font-smoothing: antialiased; }
+.pad { position: fixed; inset: 4px; display: flex; flex-direction: column; background: var(--card); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+.title { padding: 8px 14px 0; font-weight: 600; font-size: 13.5px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.title:empty { display: none; }
+textarea { flex: 1; width: 100%; resize: none; border: 0; outline: none; background: transparent; color: var(--text); padding: 10px 14px; font: 14.5px/1.55 ui-sans-serif, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; tab-size: 4; overflow-y: auto; scrollbar-width: thin; scrollbar-color: var(--thumb) transparent; }
+textarea::placeholder { color: var(--muted); opacity: .7; }
+textarea::-webkit-scrollbar { width: 8px; }
+textarea::-webkit-scrollbar-thumb { background: var(--thumb); border-radius: 8px; }
+textarea::-webkit-scrollbar-track { background: transparent; }
+.bar { display: flex; align-items: center; gap: 4px; padding: 3px 6px 4px 14px; border-top: 1px solid var(--line); min-height: 30px; }
+.st { flex: 1; font-size: 11.5px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.st.warn { color: var(--warn); } .st.ok { color: var(--ok); }
+.bar button { border: 0; background: none; color: var(--muted); font: inherit; font-size: 13px; height: 24px; min-width: 26px; padding: 0 6px; border-radius: 6px; cursor: pointer; }
+.bar button:hover { background: var(--line); color: var(--text); }
+.bar button:focus-visible { outline: 2px solid var(--ok); outline-offset: 1px; }
+.sheet { position: absolute; left: 8px; right: 8px; bottom: 36px; background: var(--bg); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; box-shadow: 0 6px 24px rgba(0,0,0,.12); font-size: 13px; display: none; }
+.sheet.show { display: block; }
+.sheet p { margin: 0 0 8px; }
+.sheet pre { margin: 0 0 8px; max-height: 110px; overflow: auto; white-space: pre-wrap; font: 12.5px/1.45 inherit; color: var(--muted); background: var(--card); border-radius: 6px; padding: 6px 8px; }
+.sheet .row { display: flex; gap: 6px; justify-content: flex-end; flex-wrap: wrap; }
+.sheet button { border: 1px solid var(--line); background: var(--card); color: var(--text); border-radius: 7px; padding: 4px 10px; font: inherit; font-size: 12.5px; cursor: pointer; }
+.sheet button.main { background: var(--text); color: var(--bg); border-color: var(--text); }
+</style>
+</head>
+<body>
+<div class="pad">
+  <div class="title" id="title"></div>
+  <textarea id="ta" spellcheck="true" placeholder="Escribe aquí…" aria-label="Bloc de notas"></textarea>
+  <div class="bar">
+    <span class="st" id="st" role="status" aria-live="polite"></span>
+    <button type="button" id="copy" title="Copiar todo" aria-label="Copiar todo">⧉</button>
+    <button type="button" id="dl" title="Descargar como .txt" aria-label="Descargar como archivo de texto">⤓</button>
+    <button type="button" id="undo" title="Recuperar una versión anterior" aria-label="Recuperar una versión anterior">↶</button>
+  </div>
+  <div class="sheet" id="sheet" role="dialog" aria-label="Versión anterior"></div>
+</div>
+<script>
+// Bloc de notas para Notion. La configuración va en el enlace, después de # (no sale de tu navegador):
+//   #api=URL     → dirección del script de Google que guarda el texto (sin ella, se guarda solo en este aparato)
+//   &k=CLAVE     → la clave de ese script
+//   &nota=nombre → para tener varios blocs distintos (por defecto «principal»)
+//   &titulo=…    → un título pequeño encima (opcional)
+(() => {
+  const P = new URLSearchParams(location.hash.slice(1));
+  const API = P.get('api'), KEY = P.get('k') || '', NOTA = (P.get('nota') || 'principal').replace(/[^A-Za-z0-9_-]/g, '') || 'principal';
+  const ta = document.getElementById('ta'), st = document.getElementById('st'), sheet = document.getElementById('sheet');
+  document.getElementById('title').textContent = P.get('titulo') || '';
+  const LS = 'bloc:' + (API ? API.slice(-24) : 'local') + ':' + NOTA;
+  const hhmm = t => new Date(t).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
+  const when = t => { const d = new Date(t), today = new Date(); return d.toDateString() === today.toDateString() ? 'hoy a las ' + hhmm(t) : d.toLocaleDateString('es-ES', { day: 'numeric', month: 'short' }) + ' a las ' + hhmm(t); };
+
+  let rev = 0, dirty = false, saving = false, again = false, timer = null, retry = null, lastType = 0, broken = false;
+  const sent = [];   // últimos textos enviados desde aquí: si el servidor tiene uno de estos, no es un conflicto
+  const remember = t => { sent.push(t); if (sent.length > 6) sent.shift(); };
+
+  function status(text, cls) { st.textContent = text; st.className = 'st' + (cls ? ' ' + cls : ''); }
+  function keep() { try { localStorage.setItem(LS, JSON.stringify({ text: ta.value, rev, dirty, t: Date.now() })); } catch (e) {} }
+  function cached() { try { return JSON.parse(localStorage.getItem(LS) || 'null'); } catch (e) { return null; } }
+  function setText(text) {   // cambia el texto sin mover de sitio a quien está leyendo
+    if (ta.value === text) return;
+    const top = ta.scrollTop, a = ta.selectionStart, b = ta.selectionEnd, focused = document.activeElement === ta;
+    ta.value = text; ta.scrollTop = top;
+    if (focused) { ta.selectionStart = Math.min(a, text.length); ta.selectionEnd = Math.min(b, text.length); }
+  }
+  async function call(body, opts) {
+    const r = await fetch(API, Object.assign({ method: 'POST', body: JSON.stringify(Object.assign({ k: KEY, nota: NOTA }, body)), redirect: 'follow' }, opts || {}));
+    const j = await r.json();
+    if (j.error === 'clave') { broken = true; status('La clave del enlace no es correcta', 'warn'); throw new Error('clave'); }
+    return j;
+  }
+
+  async function pull() {
+    if (!API || broken || saving) return;
+    try {
+      const j = await call({ op: 'leer' });
+      if (j.error) throw new Error(j.error);
+      if (dirty) {
+        if (j.rev === rev) return save();
+        return merge(j);
+      }
+      if (j.rev !== rev) { setText(j.text); rev = j.rev; keep(); }
+      status(j.t ? 'Guardado · ' + when(j.t) : 'Listo', 'ok');
+    } catch (e) { if (!broken) status(dirty ? 'Sin conexión: lo guardo en este aparato' : 'Sin conexión', 'warn'); }
+  }
+
+  function merge(server, viaSave) {   // otro aparato guardó mientras aquí se escribía: se juntan los dos textos, no se pierde nada
+    const mine = ta.value;
+    rev = server.rev;
+    if (server.text === mine) { dirty = false; keep(); status('Guardado · ' + when(server.t), 'ok'); return; }
+    if (!sent.includes(server.text)) {
+      // de lo escrito aquí, solo las líneas que no coinciden con las del otro aparato
+      let pre = 0, suf = 0;
+      const S = server.text, n = Math.min(S.length, mine.length);
+      while (pre < n && S[pre] === mine[pre]) pre++;
+      while (suf < n - pre && S[S.length - 1 - suf] === mine[mine.length - 1 - suf]) suf++;
+      pre = mine.lastIndexOf('\n', pre - 1) + 1;
+      let end = mine.length - suf; const nl = mine.indexOf('\n', end); end = nl < 0 ? mine.length : nl;
+      const part = mine.slice(pre, end).trim() ? mine.slice(pre, end) : mine;
+      setText(S + (S ? '\n\n' : '') + '——— Escrito en este aparato (' + hhmm(Date.now()) + ') ———\n' + part);
+      status('Había cambios de otro aparato: están los dos textos juntos', 'warn');
+    }
+    dirty = true; keep();
+    if (!viaSave) save();
+  }
+
+  async function save(extra) {
+    clearTimeout(timer); clearTimeout(retry);
+    if (!API) { dirty = false; keep(); status('Guardado en este aparato'); return; }
+    if (broken) return;
+    if (saving) { again = true; return; }
+    saving = true;
+    let stop = false;
+    const text = ta.value;
+    remember(text);
+    status('Guardando…');
+    try {
+      const j = await call(Object.assign({ op: 'guardar', text, base: rev }, extra || {}));
+      if (j.conflict) { merge(j, true); return; }
+      if (j.error === 'largo') { stop = true; status('Demasiado largo: el máximo son ' + j.max.toLocaleString('es-ES') + ' caracteres', 'warn'); return; }
+      if (!j.ok) throw new Error(j.error || 'error');
+      rev = j.rev;
+      if (ta.value === text) dirty = false;
+      keep();
+      status('Guardado · ' + when(j.t), 'ok');
+    } catch (e) {
+      stop = true;
+      if (!broken) { status('Sin conexión: lo guardo en este aparato y lo vuelvo a intentar', 'warn'); retry = setTimeout(save, 15000); }
+    } finally {
+      saving = false;
+      if (!stop && (again || dirty)) { again = false; if (dirty) timer = setTimeout(save, 800); }
+    }
+  }
+
+  ta.addEventListener('input', () => {
+    dirty = true; lastType = Date.now(); keep();
+    status(API ? 'Escribiendo…' : 'Guardado en este aparato');
+    clearTimeout(timer); timer = setTimeout(save, 1200);
+  });
+  ta.addEventListener('blur', () => { if (dirty) save(); });
+  ta.addEventListener('keydown', e => {   // Tab escribe un tabulador en vez de saltar fuera
+    if (e.key === 'Tab' && !e.shiftKey && !e.ctrlKey && !e.altKey && !e.metaKey) {
+      e.preventDefault(); ta.setRangeText('\t', ta.selectionStart, ta.selectionEnd, 'end'); ta.dispatchEvent(new Event('input'));
+    }
+  });
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') pull();
+    else if (dirty && API && !broken) {   // al cerrar o cambiar de pestaña, un último intento
+      remember(ta.value);
+      try { fetch(API, { method: 'POST', keepalive: true, body: JSON.stringify({ k: KEY, nota: NOTA, op: 'guardar', text: ta.value, base: rev }) }); } catch (e) {}
+    }
+  });
+  window.addEventListener('focus', pull);
+  setInterval(() => { if (document.visibilityState === 'visible' && !dirty && Date.now() - lastType > 3000) pull(); }, 45000);
+
+  // Botones: copiar, descargar y recuperar una versión anterior
+  document.getElementById('copy').onclick = async () => {
+    try { await navigator.clipboard.writeText(ta.value); }
+    catch (e) { ta.focus(); ta.select(); try { document.execCommand('copy'); } catch (x) {} }
+    status('Copiado', 'ok');
+  };
+  document.getElementById('dl').onclick = () => {
+    const a = document.createElement('a'), name = (P.get('titulo') || NOTA).replace(/[\\/:*?"<>|]/g, '').trim() || 'notas';
+    a.href = URL.createObjectURL(new Blob([ta.value], { type: 'text/plain;charset=utf-8' })); a.download = name + '.txt';
+    document.body.append(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+  };
+  function closeSheet() { sheet.classList.remove('show'); sheet.replaceChildren(); }
+  function sheetWith(nodes) { sheet.replaceChildren(...nodes); sheet.classList.add('show'); }
+  const el = (tag, text, cls) => { const n = document.createElement(tag); if (text != null) n.textContent = text; if (cls) n.className = cls; return n; };
+  document.getElementById('undo').onclick = async () => {
+    if (sheet.classList.contains('show')) return closeSheet();
+    if (!API) return sheetWith([el('p', 'La copia de seguridad solo existe cuando el bloc se guarda en Google (con #api= en el enlace). Ctrl+Z deshace los últimos cambios.'), rowOf([btn('Cerrar', closeSheet)])]);
+    sheetWith([el('p', 'Buscando la copia de seguridad…')]);
+    try {
+      const j = await call({ op: 'copia' });
+      if (!j.t) return sheetWith([el('p', 'Todavía no hay copia de seguridad: se guarda una cada media hora mientras escribes. Ctrl+Z deshace los últimos cambios.'), rowOf([btn('Cerrar', closeSheet)])]);
+      sheetWith([el('p', 'Copia de seguridad de ' + when(j.t) + ':'), el('pre', j.text.slice(0, 1500) + (j.text.length > 1500 ? '\n…' : '')),
+        rowOf([btn('Cancelar', closeSheet), btn('Recuperar esta versión', async () => {
+          closeSheet(); setText(j.text); dirty = true; keep(); await save({ snap: true });
+          status('Recuperada. Lo que había antes queda como copia de seguridad', 'ok');
+        }, 'main')])]);
+    } catch (e) { sheetWith([el('p', 'No se ha podido leer la copia (sin conexión).'), rowOf([btn('Cerrar', closeSheet)])]); }
+  };
+  function btn(text, fn, cls) { const b = el('button', text, cls); b.type = 'button'; b.onclick = fn; return b; }
+  function rowOf(btns) { const r = el('div', null, 'row'); r.append(...btns); return r; }
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') closeSheet(); });
+
+  // Arranque: primero lo guardado en este aparato (sale al momento), luego lo de Google
+  const c = cached();
+  if (c) { ta.value = c.text || ''; rev = c.rev || 0; dirty = !!c.dirty; }
+  if (!API) { status(c && c.t ? 'Guardado en este aparato · ' + when(c.t) : 'Se guarda solo en este aparato'); return; }
+  if (!KEY) { broken = true; status('Falta la clave en el enlace (&k=…)', 'warn'); return; }
+  status(c ? 'Comprobando…' : 'Cargando…');
+  pull();
+})();
+</script>
+</body>
+</html>
