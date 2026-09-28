@@ -29,6 +29,7 @@ body { font: 14px/1.4 ui-sans-serif, -apple-system, "Segoe UI", Roboto, Helvetic
 .msg b { color: var(--text); font-weight: 600; }
 .msg code { font-size: 12px; background: var(--bg); padding: 1px 5px; border-radius: 4px; }
 button:focus-visible { outline: 2px solid #2e7d4f; outline-offset: 2px; }
+.stage.empty .nav, .stage.empty .bar, .stage.empty .cap { display: none !important; }
 @media (prefers-reduced-motion: reduce) { .slide { transition: none; } }
 </style>
 </head>
@@ -73,19 +74,17 @@ button:focus-visible { outline: 2px solid #2e7d4f; outline-offset: 2px; }
   }
   const label = f => (f.name || '').replace(/\.[a-z0-9]{2,5}$/i, '');
 
-  async function load() {
-    if (IDS.length) return IDS.map(id => ({ id, name: '' }));
-    if (!API) return null;
-    try {
-      const r = await fetch(API, { redirect: 'follow' });
-      const j = await r.json();
-      const list = (j.files || []).filter(f => f && f.id);
-      try { localStorage.setItem(CACHE, JSON.stringify(list)); } catch (e) {}
-      return list;
-    } catch (e) {
-      try { const c = JSON.parse(localStorage.getItem(CACHE) || 'null'); if (c && c.length) return c; } catch (x) {}
-      throw e;
-    }
+  // La lista de la carpeta se guarda en este navegador: la próxima vez las fotos salen al momento
+  // y la lista nueva se pide por detrás (el script de Google a veces tarda unos segundos en despertar).
+  function cached() {
+    try { const c = JSON.parse(localStorage.getItem(CACHE) || 'null'); return Array.isArray(c) && c.length ? c : null; } catch (e) { return null; }
+  }
+  async function fetchList() {
+    const r = await fetch(API, { redirect: 'follow' });
+    const j = await r.json();
+    const list = (j.files || []).filter(f => f && f.id);
+    try { localStorage.setItem(CACHE, JSON.stringify(list)); } catch (e) {}
+    return list;
   }
 
   function build() {
@@ -140,19 +139,34 @@ button:focus-visible { outline: 2px solid #2e7d4f; outline-offset: 2px; }
   document.addEventListener('keydown', e => { if (e.key === 'ArrowRight') { go(i + 1); restart(); } else if (e.key === 'ArrowLeft') { go(i - 1); restart(); } else if (e.key === ' ') { e.preventDefault(); paused = !paused; paintPause(); restart(); } });
   document.addEventListener('visibilitychange', restart);
 
+  function apply(list) {
+    if (!list.length) {
+      clearInterval(timer); files = []; apply.sig = '';
+      stage.querySelectorAll('.slide').forEach(n => n.remove());
+      stage.classList.add('empty');
+      show('<b>Todavía no hay fotos</b><span>Pon fotos en la carpeta «Carrusel» de Drive y aparecerán aquí.</span>', true);
+      return;
+    }
+    const sig = list.map(f => f.id).sort().join(',');
+    if (sig === apply.sig) return;
+    apply.sig = sig;
+    files = sortList(list.slice());
+    stage.classList.remove('empty');
+    msg.style.display = 'none';
+    build(); go(0); restart();
+  }
+
   async function start() {
     if (!API && !IDS.length) {
       show('<b>Carrusel de fotos</b><span>Falta la carpeta en el enlace: <code>#api=…</code> o <code>#ids=…</code></span>', true); return;
     }
+    if (IDS.length) { apply(IDS.map(id => ({ id, name: '' }))); return; }
+    const c = cached();
+    if (c && !apply.sig) apply(c);
     let list;
-    try { list = await load(); } catch (e) { show('<b>No se ha podido leer la carpeta</b><span>Revisa la conexión o el enlace del script.</span>', true); return; }
-    if (!list || !list.length) { show('<b>Todavía no hay fotos</b><span>Pon fotos en la carpeta «Carrusel» de Drive y aparecerán aquí.</span>', true); return; }
-    const sig = list.map(f => f.id).sort().join(',');
-    if (sig === start.sig) return;
-    start.sig = sig;
-    files = sortList(list.slice());
-    msg.style.display = 'none';
-    build(); go(0); restart();
+    try { list = await fetchList(); }
+    catch (e) { if (!files.length) show('<b>No se ha podido leer la carpeta</b><span>Revisa la conexión o el enlace del script.</span>', true); return; }
+    apply(list);
   }
   start();
   if (API) setInterval(start, 30 * 60 * 1000);
