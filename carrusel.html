@@ -1,0 +1,162 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Carrusel de fotos</title>
+<style>
+:root { --bg:#fff; --card:#f7f7f5; --text:#37352f; --muted:#787774; --line:#e9e9e7; --chip:rgba(255,255,255,.82); --chipText:#37352f; }
+@media (prefers-color-scheme: dark) { :root { --bg:#191919; --card:#232323; --text:#e8e7e4; --muted:#9b9a97; --line:#303030; --chip:rgba(25,25,25,.72); --chipText:#e8e7e4; } }
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text); }
+body { font: 14px/1.4 ui-sans-serif, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; -webkit-font-smoothing: antialiased; overflow: hidden; }
+.stage { position: fixed; inset: 0; overflow: hidden; background: var(--card); touch-action: pan-y; user-select: none; -webkit-user-select: none; }
+.slide { position: absolute; inset: 0; opacity: 0; transition: opacity .9s ease; }
+.slide.on { opacity: 1; }
+.slide .blur { position: absolute; inset: -40px; background-size: cover; background-position: center; filter: blur(28px) saturate(1.1); opacity: .55; transform: scale(1.1); }
+.slide img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; }
+.cap { position: absolute; left: 10px; bottom: 10px; max-width: calc(100% - 20px); background: var(--chip); color: var(--chipText); font-size: 12.5px; padding: 4px 10px; border-radius: 999px; backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; opacity: 0; transition: opacity .3s; }
+.cap.show { opacity: 1; }
+.nav { position: absolute; top: 50%; transform: translateY(-50%); width: 36px; height: 36px; border-radius: 50%; border: 0; background: var(--chip); color: var(--chipText); font-size: 18px; line-height: 1; cursor: pointer; display: grid; place-items: center; opacity: 0; transition: opacity .25s; backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); }
+.nav.prev { left: 8px; } .nav.next { right: 8px; }
+.stage:hover .nav, .stage.touched .nav, .nav:focus-visible { opacity: 1; }
+.bar { position: absolute; right: 10px; bottom: 10px; display: flex; gap: 6px; align-items: center; }
+.dots { display: flex; gap: 5px; background: var(--chip); padding: 6px 8px; border-radius: 999px; backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); }
+.dots button { width: 7px; height: 7px; padding: 0; border-radius: 50%; border: 0; background: var(--muted); opacity: .45; cursor: pointer; }
+.dots button.on { opacity: 1; background: var(--chipText); }
+.pause { width: 28px; height: 28px; border-radius: 50%; border: 0; background: var(--chip); color: var(--chipText); font-size: 12px; cursor: pointer; backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); }
+.msg { position: absolute; inset: 0; display: grid; place-content: center; text-align: center; padding: 16px; color: var(--muted); gap: 6px; }
+.msg b { color: var(--text); font-weight: 600; }
+.msg code { font-size: 12px; background: var(--bg); padding: 1px 5px; border-radius: 4px; }
+button:focus-visible { outline: 2px solid #2e7d4f; outline-offset: 2px; }
+@media (prefers-reduced-motion: reduce) { .slide { transition: none; } }
+</style>
+</head>
+<body>
+<div class="stage" id="stage" aria-roledescription="carrusel" aria-label="Fotos">
+  <div class="msg" id="msg">Cargando fotos…</div>
+</div>
+<script>
+// Carrusel de fotos de Google Drive para Notion.
+// Todo va en el enlace, después de # (no se envía a ningún servidor ni queda en este archivo):
+//   #api=URL      → dirección del script de Google Apps Script que lista la carpeta (las fotos nuevas entran solas)
+//   #ids=ID1,ID2  → o bien, los identificadores de las fotos, separados por comas
+//   &s=6          → segundos entre foto y foto (por defecto 6)
+//   &orden=azar   → azar | nombre | fecha (por defecto azar)
+//   &nombres=1    → muestra el nombre de la foto abajo (por defecto no)
+// Las fotos tienen que estar en Drive como «cualquiera con el enlace».
+(() => {
+  const P = new URLSearchParams(location.hash.slice(1));
+  const API = P.get('api');
+  const IDS = (P.get('ids') || '').split(',').map(s => s.trim()).filter(Boolean);
+  const SECS = Math.max(2, Math.min(120, parseFloat(P.get('s')) || 6));
+  const ORDER = (P.get('orden') || 'azar').toLowerCase();
+  const NAMES = P.get('nombres') === '1';
+  const stage = document.getElementById('stage');
+  const msg = document.getElementById('msg');
+  const CACHE = 'carrusel-lista:' + (API || IDS.join(','));
+  const url = (id, w) => `https://lh3.googleusercontent.com/d/${encodeURIComponent(id)}=w${w}`;
+  const alt = (id, w) => `https://drive.google.com/thumbnail?id=${encodeURIComponent(id)}&sz=w${w}`;
+  const W = Math.min(2400, Math.round(Math.max(window.innerWidth, window.innerHeight) * (window.devicePixelRatio || 1)));
+
+  let files = [], i = -1, timer = null, paused = false, slides = [], dotsBox = null, capEl = null, pauseBtn = null;
+
+  window.addEventListener('hashchange', () => location.reload());
+
+  function show(text, html) { msg.style.display = ''; if (html) msg.innerHTML = text; else msg.textContent = text; }
+
+  function shuffle(a) { for (let k = a.length - 1; k > 0; k--) { const j = Math.floor(Math.random() * (k + 1)); [a[k], a[j]] = [a[j], a[k]]; } return a; }
+  function sortList(list) {
+    if (ORDER === 'nombre') return list.sort((a, b) => (a.name || '').localeCompare(b.name || '', 'es', { numeric: true }));
+    if (ORDER === 'fecha') return list.sort((a, b) => (b.t || 0) - (a.t || 0));
+    return shuffle(list);
+  }
+  const label = f => (f.name || '').replace(/\.[a-z0-9]{2,5}$/i, '');
+
+  async function load() {
+    if (IDS.length) return IDS.map(id => ({ id, name: '' }));
+    if (!API) return null;
+    try {
+      const r = await fetch(API, { redirect: 'follow' });
+      const j = await r.json();
+      const list = (j.files || []).filter(f => f && f.id);
+      try { localStorage.setItem(CACHE, JSON.stringify(list)); } catch (e) {}
+      return list;
+    } catch (e) {
+      try { const c = JSON.parse(localStorage.getItem(CACHE) || 'null'); if (c && c.length) return c; } catch (x) {}
+      throw e;
+    }
+  }
+
+  function build() {
+    stage.querySelectorAll('.slide').forEach(n => n.remove());
+    slides = [0, 1].map(() => {
+      const d = document.createElement('div'); d.className = 'slide';
+      const b = document.createElement('div'); b.className = 'blur';
+      const im = document.createElement('img'); im.alt = ''; im.decoding = 'async'; im.referrerPolicy = 'no-referrer';
+      d.append(b, im); stage.prepend(d); return { d, b, im };
+    });
+    if (!capEl) {
+      capEl = document.createElement('div'); capEl.className = 'cap'; stage.append(capEl);
+      const prev = mkBtn('nav prev', '‹', 'Foto anterior', () => { go(i - 1); restart(); });
+      const next = mkBtn('nav next', '›', 'Foto siguiente', () => { go(i + 1); restart(); });
+      const bar = document.createElement('div'); bar.className = 'bar';
+      dotsBox = document.createElement('div'); dotsBox.className = 'dots';
+      pauseBtn = mkBtn('pause', '❚❚', 'Pausar', () => { paused = !paused; paintPause(); restart(); });
+      bar.append(dotsBox, pauseBtn); stage.append(prev, next, bar);
+    }
+    dotsBox.replaceChildren();
+    if (files.length > 1 && files.length <= 30) files.forEach((f, k) => dotsBox.append(mkBtn('', '', 'Foto ' + (k + 1), () => { go(k); restart(); })));
+    dotsBox.style.display = dotsBox.children.length ? '' : 'none';
+    stage.querySelectorAll('.nav').forEach(n => n.style.display = files.length > 1 ? '' : 'none');
+    pauseBtn.style.display = files.length > 1 ? '' : 'none';
+  }
+  function mkBtn(cls, txt, lab, fn) { const b = document.createElement('button'); b.type = 'button'; b.className = cls; b.textContent = txt; b.setAttribute('aria-label', lab); b.title = lab; b.addEventListener('click', e => { e.stopPropagation(); fn(); }); return b; }
+  function paintPause() { pauseBtn.textContent = paused ? '▶' : '❚❚'; pauseBtn.title = pauseBtn.ariaLabel = paused ? 'Seguir' : 'Pausar'; }
+
+  let flip = 0;
+  function go(n) {
+    if (!files.length) return;
+    i = (n + files.length) % files.length;
+    const f = files[i], s = slides[flip = 1 - flip], other = slides[1 - flip];
+    const src = url(f.id, W);
+    s.im.onerror = () => { if (!s.im.dataset.alt) { s.im.dataset.alt = 1; s.im.src = alt(f.id, W); s.b.style.backgroundImage = `url("${alt(f.id, 400)}")`; } };
+    s.im.onload = () => { s.d.classList.add('on'); other.d.classList.remove('on'); };
+    delete s.im.dataset.alt;
+    s.b.style.backgroundImage = `url("${url(f.id, 400)}")`;
+    s.im.src = src;
+    if (s.im.complete && s.im.naturalWidth) s.im.onload();
+    s.im.alt = label(f) || 'Foto';
+    if (capEl) { capEl.textContent = label(f); capEl.classList.toggle('show', NAMES && !!label(f)); }
+    [...dotsBox.children].forEach((d, k) => d.classList.toggle('on', k === i));
+    const nx = files[(i + 1) % files.length]; if (nx) { const p = new Image(); p.referrerPolicy = 'no-referrer'; p.src = url(nx.id, W); }
+  }
+  function restart() { clearInterval(timer); if (!paused && files.length > 1 && !document.hidden) timer = setInterval(() => go(i + 1), SECS * 1000); }
+
+  // Gestos: deslizar para cambiar, tocar para ver las flechas
+  let x0 = null;
+  stage.addEventListener('pointerdown', e => { x0 = e.clientX; stage.classList.add('touched'); clearTimeout(stage._t); stage._t = setTimeout(() => stage.classList.remove('touched'), 2500); });
+  stage.addEventListener('pointerup', e => { if (x0 === null) return; const dx = e.clientX - x0; x0 = null; if (Math.abs(dx) > 40) { go(i + (dx < 0 ? 1 : -1)); restart(); } });
+  document.addEventListener('keydown', e => { if (e.key === 'ArrowRight') { go(i + 1); restart(); } else if (e.key === 'ArrowLeft') { go(i - 1); restart(); } else if (e.key === ' ') { e.preventDefault(); paused = !paused; paintPause(); restart(); } });
+  document.addEventListener('visibilitychange', restart);
+
+  async function start() {
+    if (!API && !IDS.length) {
+      show('<b>Carrusel de fotos</b><span>Falta la carpeta en el enlace: <code>#api=…</code> o <code>#ids=…</code></span>', true); return;
+    }
+    let list;
+    try { list = await load(); } catch (e) { show('<b>No se ha podido leer la carpeta</b><span>Revisa la conexión o el enlace del script.</span>', true); return; }
+    if (!list || !list.length) { show('<b>Todavía no hay fotos</b><span>Pon fotos en la carpeta «Carrusel» de Drive y aparecerán aquí.</span>', true); return; }
+    const sig = list.map(f => f.id).sort().join(',');
+    if (sig === start.sig) return;
+    start.sig = sig;
+    files = sortList(list.slice());
+    msg.style.display = 'none';
+    build(); go(0); restart();
+  }
+  start();
+  if (API) setInterval(start, 30 * 60 * 1000);
+})();
+</script>
+</body>
+</html>
