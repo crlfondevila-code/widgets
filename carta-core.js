@@ -1,5 +1,6 @@
 // Motor astrológico: posiciones tropicales geocéntricas (eclíptica verdadera de la fecha),
-// nodo lunar verdadero (Meeus), Asc/MC y casas Plácidus.
+// nodo lunar verdadero (Meeus), Asc/MC y casas Plácidus. Con carta-efem.js cargado, también
+// Quirón, Ceres, Palas, Juno y Vesta; además Lilith media, nodo sur, Parte de la Fortuna y Vértice.
 (function (root) {
   const A = root.Astronomy;
   const D2R = Math.PI / 180, R2D = 180 / Math.PI;
@@ -21,8 +22,18 @@
     return norm(A.Ecliptic(A.GeoVector(body, date, true)).elon);
   }
 
-  // Nodo lunar verdadero (Meeus, Astronomical Algorithms, cap. 47)
+  // Nodo lunar verdadero = nodo osculador (como Swiss Ephemeris): el plano que forman la posición y la velocidad
+  // geocéntricas de la Luna, en la eclíptica verdadera de la fecha. Si falta la función, fórmula de Meeus.
   function trueNode(date) {
+    if (A.GeoMoonState && A.Rotation_EQJ_ECT) {
+      const t = A.MakeTime(date), s = A.GeoMoonState(t), R = A.Rotation_EQJ_ECT(t);
+      const r = A.RotateVector(R, new A.Vector(s.x, s.y, s.z, t)), v = A.RotateVector(R, new A.Vector(s.vx, s.vy, s.vz, t));
+      return atan2D(r.y * v.z - r.z * v.y, -(r.z * v.x - r.x * v.z));
+    }
+    return meeusNode(date);
+  }
+  // Nodo verdadero aproximado (Meeus, Astronomical Algorithms, cap. 47)
+  function meeusNode(date) {
     const t = A.MakeTime(date);
     const T = t.tt / 36525; // siglos julianos desde J2000 (TT)
     const D = norm(297.8501921 + 445267.1114034 * T - 0.0018819 * T * T + T * T * T / 545868 - T ** 4 / 113065000);
@@ -85,7 +96,91 @@
     return 12;
   }
 
-  root.AstroCore = { positions, houses, houseOf, norm, trueNode, BODIES };
+  // ---------- Puntos extra: Quirón, asteroides, Lilith, nodo sur, Parte de la Fortuna y Vértice ----------
+  // Quirón y asteroides: elementos osculadores de carta-efem.js (Swiss Ephemeris), propagados con Kepler desde
+  // la época más cercana; posición aparente geocéntrica (tiempo de luz y aberración) en la eclíptica verdadera de la fecha.
+  const GM = 0.01720209895 * 0.01720209895;      // UA³/día²
+  const C_AUD = 173.1446326846693;                // velocidad de la luz en UA/día
+  const EFEM_KEYS = ['chiron', 'ceres', 'pallas', 'juno', 'vesta'];
+  let ECL2EQJ = null;
+
+  function helioEcl(key, tt) {                    // tt: días TT desde J2000
+    const E = root.CartaEfem, b = E && E.bodies[key];
+    if (!b) return null;
+    const k = Math.round((tt - E.t0) / b.step);
+    if (k < 0 || k >= b.n) return null;          // fuera de 1900-2100
+    const o = k * 6, el = b.el;
+    const a = el[o], e = el[o + 1], i = el[o + 2] * D2R, Om = el[o + 3] * D2R, w = el[o + 4] * D2R;
+    const M = el[o + 5] * D2R + Math.sqrt(GM / (a * a * a)) * (tt - (E.t0 + k * b.step));
+    let Ea = M;
+    for (let it = 0; it < 30; it++) { const d = (Ea - e * Math.sin(Ea) - M) / (1 - e * Math.cos(Ea)); Ea -= d; if (Math.abs(d) < 1e-12) break; }
+    const xp = a * (Math.cos(Ea) - e), yp = a * Math.sqrt(1 - e * e) * Math.sin(Ea);
+    const cO = Math.cos(Om), sO = Math.sin(Om), cw = Math.cos(w), sw = Math.sin(w), ci = Math.cos(i), si = Math.sin(i);
+    return [
+      (cO * cw - sO * sw * ci) * xp + (-cO * sw - sO * cw * ci) * yp,
+      (sO * cw + cO * sw * ci) * xp + (-sO * sw + cO * cw * ci) * yp,
+      (sw * si) * xp + (cw * si) * yp
+    ];
+  }
+  function efemLon(key, date) {
+    const t = A.MakeTime(date);
+    if (!ECL2EQJ) ECL2EQJ = A.Rotation_ECL_EQJ();
+    let tau = 0, g = null;
+    for (let it = 0; it < 3; it++) {              // tiempo de luz; la Tierra también se retrasa (aberración)
+      const h = helioEcl(key, t.tt - tau); if (!h) return null;
+      const tb = t.AddDays(-tau);
+      const b = A.RotateVector(ECL2EQJ, new A.Vector(h[0], h[1], h[2], tb));
+      const earth = A.HelioVector('Earth', tb);
+      g = new A.Vector(b.x - earth.x, b.y - earth.y, b.z - earth.z, t);
+      tau = Math.hypot(g.x, g.y, g.z) / C_AUD;
+    }
+    return norm(A.Ecliptic(g).elon);
+  }
+
+  // Lilith (Luna negra media): apogeo medio de la órbita lunar (perigeo medio de ELP + 180°), proyectado desde
+  // el plano de la órbita (5,145°) a la eclíptica y con nutación, como Swiss Ephemeris (diferencia < 2″)
+  function meanLilith(date) {
+    const t = A.MakeTime(date), T = t.tt / 36525;
+    const apogee = 83.3532465 + 4069.0137287 * T - 0.0103200 * T * T - T * T * T / 80053 + T ** 4 / 18999000 + 180;
+    const node = 125.0445479 - 1934.1362891 * T + 0.0020754 * T * T + T * T * T / 467441 - T ** 4 / 60616000;
+    const u = apogee - node;
+    return norm(node + atan2D(cosD(5.1453964) * sinD(u), cosD(u)) + A.e_tilt(t).dpsi / 3600);
+  }
+
+  const EXTRA = [
+    { key: 'chiron', fn: d => efemLon('chiron', d), retro: true }, { key: 'lilith', fn: meanLilith, retro: false },
+    { key: 'ceres', fn: d => efemLon('ceres', d), retro: true }, { key: 'pallas', fn: d => efemLon('pallas', d), retro: true },
+    { key: 'juno', fn: d => efemLon('juno', d), retro: true }, { key: 'vesta', fn: d => efemLon('vesta', d), retro: true },
+    { key: 'snode', fn: d => norm(trueNode(d) + 180), retro: false }
+  ];
+  // Devuelve { chiron, lilith, ceres, pallas, juno, vesta, snode } (los que se puedan calcular) con lon, speed y retro
+  function extraPositions(date, keys) {
+    const out = {}, later = new Date(date.getTime() + 6 * 3600 * 1000);
+    for (const x of EXTRA) {
+      if (keys && !keys.includes(x.key)) continue;
+      const lon = x.fn(date); if (lon == null) continue;
+      const l2 = x.fn(later); let speed = l2 == null ? 0 : l2 - lon;
+      if (speed > 180) speed -= 360; if (speed < -180) speed += 360;
+      out[x.key] = { lon, speed: speed * 4, retro: x.retro && speed < 0 };
+    }
+    return out;
+  }
+
+  // Vértice: el «ascendente» del RAMC opuesto para la colatitud (como Swiss Ephemeris)
+  function vertex(H, lat) {
+    const ramc = norm(H.ramc + 180), eps = H.eps, f = lat >= 0 ? 90 - lat : -90 - lat;
+    let vx = atan2D(cosD(ramc), -(sinD(ramc) * cosD(eps) + tanD(f) * sinD(eps)));
+    // entre los trópicos se deja siempre en el lado oeste (como Swiss Ephemeris)
+    if (Math.abs(lat) <= eps && norm(vx - H.mc + 180) - 180 > 0) vx = norm(vx + 180);
+    return vx;
+  }
+  // Parte de la Fortuna: de día Asc + Luna − Sol; de noche (Sol bajo el horizonte, casas 1-6) Asc + Sol − Luna
+  function fortune(asc, sun, moon, cusps) {
+    const night = houseOf(sun, cusps) <= 6;
+    return { lon: norm(night ? asc + sun - moon : asc + moon - sun), night };
+  }
+
+  root.AstroCore = { positions, houses, houseOf, norm, trueNode, BODIES, extraPositions, meanLilith, vertex, fortune, efemLon, meeusNode };
 })(typeof window !== 'undefined' ? window : globalThis);
 
 // Datos de nacimiento: van en el enlace, después de la almohadilla (#), y nunca en este archivo.

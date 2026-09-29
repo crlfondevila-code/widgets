@@ -115,6 +115,12 @@
   .s-sign { font-family: var(--glyph); font-size: 34px; fill: var(--ink); }
   .s-natal { font-family: var(--glyph); font-size: 36px; fill: var(--ink); }
   .s-transit { font-family: var(--glyph); font-size: 32px; fill: var(--transit); }
+  .s-natal.minor { font-size: 27px; }
+  .s-transit.minor { font-size: 25px; }
+  .s-natal.latin, .s-transit.latin { font-family: var(--body); font-style: italic; font-size: 23px; }
+  .fx-n { fill: none; stroke: var(--ink); stroke-width: 2; }
+  .fx-t { fill: none; stroke: var(--transit); stroke-width: 2; }
+  .pn-note { font-size: 12px; color: var(--muted); }
   .s-deg { font-family: var(--mono); font-size: 18px; fill: var(--muted); }
   .s-degt { font-family: var(--mono); font-size: 17px; fill: var(--transit); }
   .s-house { font-family: var(--mono); font-size: 17px; fill: var(--muted); }
@@ -170,6 +176,14 @@
             <button type="button" id="mode-n" aria-pressed="false">Aspectos natales</button>
           </div>
         </div>
+        <div class="wheel-tools">
+          Puntos:
+          <div class="seg" role="group" aria-label="Puntos que se ven">
+            <button type="button" data-pts="p" aria-pressed="false">Planetas</button>
+            <button type="button" data-pts="q" aria-pressed="true">+ Quirón y Lilith</button>
+            <button type="button" data-pts="t" aria-pressed="false">Todos</button>
+          </div>
+        </div>
       </figcaption>
     </figure>
 
@@ -197,10 +211,11 @@
   </section>
 
   <footer>
-    Se calcula en tu navegador cada vez que abres la página, con Astronomy Engine. Está contrastado con Swiss Ephemeris: los planetas salen con menos de un minuto de arco de diferencia y las casas, exactas. Zodiaco tropical, casas Plácidus y nodo lunar verdadero. Orbe de los tránsitos: 3° (2° el sextil); aspectos natales: 8° (6° el sextil). La fecha usa la hora de tu dispositivo.
+    Se calcula en tu navegador cada vez que abres la página, con Astronomy Engine. Está contrastado con Swiss Ephemeris: los planetas salen con menos de un minuto de arco de diferencia y las casas, exactas. Zodiaco tropical, casas Plácidus y nodo lunar verdadero (osculador). Quirón, Ceres, Palas, Juno y Vesta salen de elementos orbitales sacados de Swiss Ephemeris (de 1900 a 2100, con menos de 20″ de diferencia); Lilith es la Luna negra media. Parte de la Fortuna: de día Asc + Luna − Sol; de noche, Asc + Sol − Luna. Orbe de los tránsitos: 3° (2° el sextil); aspectos natales: 8° (6° el sextil). El nodo, Lilith y los asteroides en tránsito, y lo que toca a los asteroides, la Fortuna o el Vértice natales, solo cuentan la conjunción y la oposición. La fecha usa la hora de tu dispositivo.
   </footer>
 </div>
 <script src="https://cdn.jsdelivr.net/npm/astronomy-engine@2.1.19/astronomy.browser.min.js"></script>
+<script src="carta-efem.js"></script>
 <script src="carta-core.js"></script>
 <script>
 (function () {
@@ -213,9 +228,25 @@
   const PL = {
     sun: ['Sol', '☉'], moon: ['Luna', '☽'], mercury: ['Mercurio', '☿'], venus: ['Venus', '♀'], mars: ['Marte', '♂'],
     jupiter: ['Júpiter', '♃'], saturn: ['Saturno', '♄'], uranus: ['Urano', '♅'], neptune: ['Neptuno', '♆'],
-    pluto: ['Plutón', '♇'], node: ['Nodo norte', '☊'], asc: ['Ascendente', 'AC'], mc: ['Medio Cielo', 'MC']
+    pluto: ['Plutón', '♇'], node: ['Nodo norte', '☊'], asc: ['Ascendente', 'AC'], mc: ['Medio Cielo', 'MC'],
+    chiron: ['Quirón', '⚷'], lilith: ['Lilith', '⚸'], ceres: ['Ceres', '⚳'], pallas: ['Palas', '⚴'], juno: ['Juno', '⚵'],
+    vesta: ['Vesta', '⚶'], snode: ['Nodo sur', '☋'], fortune: ['Parte de la Fortuna', '⊗'], vertex: ['Vértice', 'Vx']
   };
   const ORDER = ['sun', 'moon', 'mercury', 'venus', 'mars', 'jupiter', 'saturn', 'uranus', 'neptune', 'pluto', 'node'];
+  // Puntos que se ven: p = planetas; q = + Quirón y Lilith; t = todos (asteroides, nodo sur, Fortuna y Vértice)
+  const PLUS_Q = ['chiron', 'lilith'], PLUS_T = ['ceres', 'pallas', 'juno', 'vesta', 'snode', 'fortune', 'vertex'];
+  const MINOR = new Set(PLUS_T);
+  const CONJ_OPP_ONLY = new Set(['node', 'lilith', 'ceres', 'pallas', 'juno', 'vesta']);   // en tránsito, solo conjunción y oposición
+  const NATAL_ONLY = new Set(['fortune', 'vertex']);                                     // dependen del lugar: sin tránsito
+  const NO_ASPECTS = new Set(['snode']);                                                 // repite al nodo norte
+  let pts = (() => {
+    const h = new URLSearchParams(location.hash.replace(/^#/, '')).get('puntos');
+    const fromHash = { p: 'p', planetas: 'p', q: 'q', quiron: 'q', t: 't', todos: 't' }[h || ''];
+    if (fromHash) return fromHash;
+    try { const v = localStorage.getItem('carta-puntos'); if (v === 'p' || v === 'q' || v === 't') return v; } catch (e) {}
+    return 'q';
+  })();
+  const shownKeys = () => [...ORDER, ...(pts !== 'p' ? PLUS_Q : []), ...(pts === 't' ? PLUS_T : [])];
   const SIGNS = [
     ['Aries', '♈', 'fire'], ['Tauro', '♉', 'earth'], ['Géminis', '♊', 'air'], ['Cáncer', '♋', 'water'],
     ['Leo', '♌', 'fire'], ['Virgo', '♍', 'earth'], ['Libra', '♎', 'air'], ['Escorpio', '♏', 'water'],
@@ -242,7 +273,19 @@
   const H = C.houses(BIRTH.date, BIRTH.lat, BIRTH.lon);
   natal.asc = { lon: H.asc, speed: 0, retro: false };
   natal.mc = { lon: H.mc, speed: 0, retro: false };
+  Object.assign(natal, C.extraPositions ? C.extraPositions(BIRTH.date) : {});
+  if (C.fortune) {
+    natal.fortune = { lon: C.fortune(H.asc, natal.sun.lon, natal.moon.lon, H.cusps).lon, speed: 0, retro: false };
+    natal.vertex = { lon: C.vertex(H, BIRTH.lat), speed: 0, retro: false };
+  }
   const ASC = H.asc;
+  function transitPositions(date) {
+    const tr = C.positions(date);
+    const extra = shownKeys().filter(k => !ORDER.includes(k) && !NATAL_ONLY.has(k));
+    if (extra.length && C.extraPositions) Object.assign(tr, C.extraPositions(date, extra));
+    return tr;
+  }
+
 
   // ---------- utilidades ----------
   const signOf = lon => SIGNS[Math.floor(norm(lon) / 30)];
@@ -253,7 +296,9 @@
     return { d, m, txt: `${d}°${String(m).padStart(2, '0')}′` };
   }
   const orbTxt = o => { const d = Math.floor(o), m = Math.round((o - d) * 60); return m === 60 ? `${d + 1}°00′` : `${d}°${String(m).padStart(2, '0')}′`; };
-  const glyph = k => (PL[k][1].length === 1 ? PL[k][1] + VS : PL[k][1]);
+  const FX_SVG = '<svg class="fx" viewBox="0 0 20 20" width="0.95em" height="0.95em" aria-hidden="true" style="vertical-align:-0.12em"><circle cx="10" cy="10" r="8" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M4.4 4.4L15.6 15.6M15.6 4.4L4.4 15.6" stroke="currentColor" stroke-width="1.6"/></svg>';
+  const glyph = k => (k === 'fortune' ? FX_SVG : PL[k][1].length === 1 ? PL[k][1] + VS : PL[k][1]);
+
   const sGlyph = s => s[1] + VS;
   const sep = (a, b) => { const d = norm(a - b); return d > 180 ? 360 - d : d; };
   const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
@@ -272,20 +317,21 @@
 
   // ---------- aspectos ----------
   function transitAspects(tr, includeMoon) {
-    const out = [];
-    const natalKeys = [...ORDER, 'asc', 'mc'];
-    for (const tk of ORDER) {
+    const out = [], keys = shownKeys();
+    const tKeys = keys.filter(k => tr[k] && !NO_ASPECTS.has(k) && !NATAL_ONLY.has(k));
+    const nKeys = [...keys.filter(k => natal[k] && !NO_ASPECTS.has(k)), 'asc', 'mc'];
+    for (const tk of tKeys) {
       if (!includeMoon && tk === 'moon') continue;
       const t = tr[tk];
-      for (const nk of natalKeys) {
-        const n = natal[nk].lon;
-        const s = sep(t.lon, n);
+      for (const nk of nKeys) {
+        const n = natal[nk].lon, s = sep(t.lon, n);
         for (const A of ASPECTS) {
-          if (tk === 'node' && A.a !== 0 && A.a !== 180) continue;
+          // nodo, Lilith y asteroides en tránsito, y lo que cae sobre asteroides, Fortuna o Vértice natales: solo conjunción y oposición
+          if ((CONJ_OPP_ONLY.has(tk) || MINOR.has(nk)) && A.a !== 0 && A.a !== 180) continue;
+          if (MINOR.has(tk) && MINOR.has(nk)) continue;                         // asteroide con asteroide: fuera
           const orb = Math.abs(s - A.a);
           if (orb <= A.tOrb) {
-            const s2 = sep(t.lon + t.speed * 0.25, n);
-            const applying = Math.abs(s2 - A.a) < orb;
+            const applying = Math.abs(sep(t.lon + t.speed * 0.25, n) - A.a) < orb;
             out.push({ tk, nk, A, orb, applying, tLon: t.lon, nLon: n });
           }
         }
@@ -294,18 +340,13 @@
     return out.sort((x, y) => x.orb - y.orb);
   }
   function natalAspects() {
-    const out = [];
-    const keys = ORDER.filter(k => k !== 'node');
+    const out = [], keys = [...ORDER.filter(k => k !== 'node'), ...(pts !== 'p' && natal.chiron ? ['chiron'] : [])];
     for (let i = 0; i < keys.length; i++) for (let j = i + 1; j < keys.length; j++) {
       const a = natal[keys[i]].lon, b = natal[keys[j]].lon, s = sep(a, b);
-      for (const A of ASPECTS) {
-        const orb = Math.abs(s - A.a);
-        if (orb <= A.nOrb) out.push({ A, orb, aLon: a, bLon: b });
-      }
+      for (const A of ASPECTS) { const orb = Math.abs(s - A.a); if (orb <= A.nOrb) out.push({ A, orb, aLon: a, bLon: b }); }
     }
     return out;
   }
-  const NATAL_ASP = natalAspects();
 
   // ---------- rueda ----------
   const CX = 500, CY = 500;
@@ -319,25 +360,41 @@
     const [x1, y1] = pt(a, r2), [x2, y2] = pt(b, r2), [x3, y3] = pt(b, r1), [x4, y4] = pt(a, r1);
     return `<path d="M${f1(x1)} ${f1(y1)} A${r2} ${r2} 0 0 0 ${f1(x2)} ${f1(y2)} L${f1(x3)} ${f1(y3)} A${r1} ${r1} 0 0 1 ${f1(x4)} ${f1(y4)} Z" fill="${fill}" class="z-ring"/>`;
   }
-  // separa glifos que caen muy juntos (relajación circular)
+  // separa glifos que caen muy juntos: agrupa los que se tocan y reparte cada grupo alrededor de su centro;
+  // cada glifo ocupa «w» grados (los puntos menores, menos)
   function spread(items, minSep) {
-    const arr = items.map(o => ({ ...o, disp: o.lon })).sort((a, b) => a.lon - b.lon);
-    if (arr.length < 2) return arr;
-    for (let pass = 0; pass < 200; pass++) {
-      let moved = false;
-      for (let i = 0; i < arr.length; i++) {
-        const a = arr[i], b = arr[(i + 1) % arr.length];
-        const gap = norm(b.disp - a.disp);
-        if (gap < minSep) {
-          const push = (minSep - gap) / 2 + 0.01;
-          a.disp = norm(a.disp - push); b.disp = norm(b.disp + push); moved = true;
-        }
+    const arr = items.map(o => ({ ...o, disp: o.lon, w: MINOR.has(o.k) ? minSep * 0.78 : minSep })).sort((a, b) => a.lon - b.lon);
+    const n = arr.length;
+    if (n < 2) return arr;
+    let cut = 0, big = -1;                           // se corta el círculo por el hueco más grande
+    for (let i = 0; i < n; i++) { const g = norm(arr[(i + 1) % n].lon - arr[i].lon); if (g > big) { big = g; cut = (i + 1) % n; } }
+    const lin = [...arr.slice(cut), ...arr.slice(0, cut)], x0 = lin[0].lon;
+    lin.forEach(o => { o.x = norm(o.lon - x0); });
+    let groups = lin.map(o => [o]);
+    const place = g => {
+      const off = [0]; for (let i = 1; i < g.length; i++) off.push(off[i - 1] + (g[i - 1].w + g[i].w) / 2);
+      const shift = g.reduce((s, o, i) => s + o.x - off[i], 0) / g.length;
+      g.forEach((o, i) => { o.p = shift + off[i]; });
+    };
+    groups.forEach(place);
+    for (let guard = 0; guard < n * 2; guard++) {
+      let merged = false;
+      for (let i = 0; i + 1 < groups.length; i++) {
+        const a = groups[i][groups[i].length - 1], b = groups[i + 1][0];
+        if (b.p - a.p < (a.w + b.w) / 2 - 1e-9) { groups.splice(i, 2, [...groups[i], ...groups[i + 1]]); place(groups[i]); merged = true; break; }
       }
-      if (!moved) break;
+      if (!merged) break;
     }
-    return arr;
+    lin.forEach(o => { o.disp = norm(o.p + x0); });
+    return lin;
   }
-
+  // glifo en la rueda (la Parte de la Fortuna se dibuja: no todas las fuentes traen ⊗)
+  function wheelGlyph(k, lon, r, ring, label) {
+    const cls = (ring === 'n' ? 's-natal' : 's-transit') + (MINOR.has(k) ? ' minor' : '') + (k === 'vertex' ? ' latin' : '');
+    if (k !== 'fortune') return text(lon, r, glyph(k), cls, `aria-label="${label}"`);
+    const [x, y] = pt(lon, r), q = ring === 'n' ? 10 : 9, d = q * 0.7;
+    return `<g class="${ring === 'n' ? 'fx-n' : 'fx-t'}" role="img" aria-label="${label}"><circle cx="${f1(x)}" cy="${f1(y)}" r="${q}"/><path d="M${f1(x - d)} ${f1(y - d)}L${f1(x + d)} ${f1(y + d)}M${f1(x + d)} ${f1(y - d)}L${f1(x - d)} ${f1(y + d)}"/></g>`;
+  }
   function drawWheel(tr, tAsps, mode) {
     let s = '';
     s += `<circle cx="${CX}" cy="${CY}" r="${R.out}" class="ring" fill="var(--surface)"/>`;
@@ -369,27 +426,28 @@
         else s += line(x.tLon, R.asp, x.nLon, R.asp, 'aspline', `stroke="${col}" stroke-width="${w}" opacity=".85"`);
       }
     } else {
-      for (const x of NATAL_ASP) {
+      for (const x of natalAspects()) {
         if (x.A.a === 0) continue;
         const col = COLOR[x.A.k], w = (0.8 + 1.6 * (1 - x.orb / x.A.nOrb)).toFixed(2);
         s += line(x.aLon, R.asp, x.bLon, R.asp, 'aspline', `stroke="${col}" stroke-width="${w}" opacity=".8"`);
       }
     }
     // planetas natales
-    const nItems = spread(ORDER.map(k => ({ k, lon: natal[k].lon })), 8.2);
+    const keys = shownKeys();
+    const nItems = spread(keys.filter(k => natal[k]).map(k => ({ k, lon: natal[k].lon })), 8.2);
     for (const it of nItems) {
       s += line(it.lon, R.hIn, it.lon, R.hIn - 9, 'tick');
       if (Math.abs(norm(it.disp - it.lon + 180) - 180) > 0.4) s += line(it.lon, R.hIn - 9, it.disp, R.hIn - 16, 'lead');
-      s += text(it.disp, R.hIn - 36, glyph(it.k), 's-natal', `aria-label="${PL[it.k][0]} natal"`);
+      s += wheelGlyph(it.k, it.disp, R.hIn - 36, 'n', `${PL[it.k][0]} natal`);
       s += text(it.disp, R.hIn - 66, `${dm(it.lon).d}°`, 's-deg');
       const [x, y] = pt(it.lon, R.asp); s += `<circle cx="${f1(x)}" cy="${f1(y)}" r="3.2" class="dot-n"/>`;
     }
     // planetas en tránsito
-    const tItems = spread(ORDER.map(k => ({ k, lon: tr[k].lon })), 7.4);
+    const tItems = spread(keys.filter(k => tr[k] && !NATAL_ONLY.has(k)).map(k => ({ k, lon: tr[k].lon })), 7.4);
     for (const it of tItems) {
       s += line(it.lon, R.zOut, it.lon, R.zOut + 10, 'lead-t');
       if (Math.abs(norm(it.disp - it.lon + 180) - 180) > 0.4) s += line(it.lon, R.zOut + 10, it.disp, R.zOut + 18, 'lead-t');
-      s += text(it.disp, R.zOut + 38, glyph(it.k), 's-transit', `aria-label="${PL[it.k][0]} en tránsito"`);
+      s += wheelGlyph(it.k, it.disp, R.zOut + 38, 't', `${PL[it.k][0]} en tránsito`);
       s += text(it.disp, R.zOut + 70, `${dm(it.lon).d}°${tr[it.k].retro ? '℞' : ''}`, 's-degt');
       const [x, y] = pt(it.lon, R.asp); s += `<circle cx="${f1(x)}" cy="${f1(y)}" r="3.6" class="dot-t"/>`;
     }
@@ -402,8 +460,8 @@
     if (!asps.length) { ul.innerHTML = '<li class="empty" style="display:block">No hay tránsitos dentro del orbe en esta fecha.</li>'; return; }
     ul.innerHTML = asps.map(x => {
       const t = tr[x.tk], ts = signOf(t.lon);
-      const target = x.nk === 'asc' ? 'tu Ascendente' : x.nk === 'mc' ? 'tu Medio Cielo' : `tu ${PL[x.nk][0]}`;
-      const slow = ['jupiter', 'saturn', 'uranus', 'neptune', 'pluto'].includes(x.tk);
+      const target = x.nk === 'asc' ? 'tu Ascendente' : x.nk === 'mc' ? 'tu Medio Cielo' : x.nk === 'fortune' ? 'tu Parte de la Fortuna' : `tu ${PL[x.nk][0]}`;
+      const slow = ['jupiter', 'saturn', 'uranus', 'neptune', 'pluto', 'chiron'].includes(x.tk);
       return `<li style="--c:${COLOR[x.A.k]}">
         <div class="line"><span class="gl t">${glyph(x.tk)}</span> <span class="t">${PL[x.tk][0]}${t.retro ? ' ℞' : ''}</span>
           <span class="a"><span class="gl">${x.A.g}${VS}</span> ${x.A.n}</span> a ${target} <span class="gl">${x.nk === 'asc' || x.nk === 'mc' ? '' : glyph(x.nk)}</span>${slow ? '<span class="tag" style="color:var(--muted)">lento</span>' : ''}</div>
@@ -412,11 +470,12 @@
     }).join('');
   }
   function renderTable(tr) {
-    const rows = [...ORDER, 'asc', 'mc'].map(k => {
+    const rows = [...shownKeys().filter(k => natal[k]), 'asc', 'mc'].map(k => {
       const n = natal[k], ns = signOf(n.lon);
       const nh = k === 'asc' ? 1 : k === 'mc' ? 10 : C.houseOf(n.lon, H.cusps);
       let tcells = '<td class="num tcol">—</td><td class="tcol">—</td>';
-      if (tr[k]) {
+      if (NATAL_ONLY.has(k)) tcells = '<td class="tcol pn-note" colspan="2">solo natal (depende del lugar)</td>';
+      else if (tr[k]) {
         const t = tr[k], ts = signOf(t.lon);
         tcells = `<td class="num tcol"><span class="gl">${sGlyph(ts)}</span> ${ts[0]} ${dm(t.lon).txt}${t.retro ? '<span class="rx">℞</span>' : ''}</td><td class="tcol">${C.houseOf(t.lon, H.cusps)}</td>`;
       }
@@ -436,7 +495,7 @@
   const fmtLong = new Intl.DateTimeFormat('es-ES', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' });
 
   function update() {
-    const tr = C.positions(when);
+    const tr = transitPositions(when);
     const asps = transitAspects(tr, moonBox.checked);
     drawWheel(tr, asps, mode);
     renderList(tr, asps);
@@ -455,6 +514,10 @@
   function setMode(m) { mode = m; btnT.setAttribute('aria-pressed', m === 't'); btnN.setAttribute('aria-pressed', m === 'n'); update(); }
   btnT.addEventListener('click', () => setMode('t'));
   btnN.addEventListener('click', () => setMode('n'));
+  const ptsBtns = document.querySelectorAll('[data-pts]');
+  const showPts = () => ptsBtns.forEach(b => b.setAttribute('aria-pressed', b.dataset.pts === pts));
+  ptsBtns.forEach(b => b.addEventListener('click', () => { pts = b.dataset.pts; try { localStorage.setItem('carta-puntos', pts); } catch (e) {} showPts(); update(); }));
+  showPts();
   update();
 })();
 </script>
