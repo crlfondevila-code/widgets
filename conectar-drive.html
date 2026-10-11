@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Conectar con tu Drive</title>
+<style>
+:root { --bg:#fff; --card:#f7f7f5; --text:#37352f; --muted:#787774; --line:#e9e9e7; --on:#37352f; --onText:#fff; --acc:#2e7d4f; --warn:#b35c00; }
+@media (prefers-color-scheme: dark) { :root { --bg:#191919; --card:#232323; --text:#e8e7e4; --muted:#9b9a97; --line:#303030; --on:#e8e7e4; --onText:#191919; --acc:#6fbf8e; --warn:#e0a458; } }
+* { box-sizing: border-box; }
+html, body { margin: 0; background: var(--bg); color: var(--text); }
+body { font: 15px/1.55 ui-sans-serif, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; -webkit-font-smoothing: antialiased; }
+main { max-width: 720px; margin: 0 auto; padding: 20px 16px 60px; }
+h1 { font-size: 24px; margin: 0 0 4px; } h2 { font-size: 18px; margin: 30px 0 6px; padding-top: 18px; border-top: 1px solid var(--line); }
+p, li { margin: 6px 0; } ol { padding-left: 22px; } .muted { color: var(--muted); font-size: 13.5px; }
+code { background: var(--card); padding: 1px 5px; border-radius: 4px; font-size: 13px; }
+input[type=text] { width: 100%; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); color: inherit; font: inherit; }
+label { display: block; font-size: 13px; color: var(--muted); margin: 10px 0 3px; }
+button { border: 1px solid var(--line); background: var(--bg); color: inherit; border-radius: 8px; padding: 6px 12px; font: inherit; font-size: 13.5px; cursor: pointer; }
+button.main { background: var(--on); color: var(--onText); border-color: var(--on); }
+button:focus-visible, input:focus-visible { outline: 2px solid var(--acc); outline-offset: 2px; }
+.code { position: relative; margin: 8px 0; }
+.code pre { margin: 0; max-height: 220px; overflow: auto; background: var(--card); border-radius: 10px; padding: 12px; font: 12.5px/1.45 ui-monospace, Menlo, Consolas, monospace; white-space: pre; }
+.code button { position: absolute; top: 8px; right: 8px; }
+.out { background: var(--card); border-radius: 10px; padding: 10px 12px; word-break: break-all; font: 12.5px/1.45 ui-monospace, Menlo, Consolas, monospace; min-height: 40px; }
+.row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; align-items: center; }
+.ok { color: var(--acc); } .bad { color: var(--warn); }
+.note { background: var(--card); border-left: 3px solid var(--warn); padding: 8px 12px; border-radius: 6px; font-size: 13.5px; margin: 12px 0; }
+</style>
+</head>
+<body>
+<main>
+<h1>Conectar las notas y el carrusel con tu Drive</h1>
+<p class="muted">Cada widget guarda sus cosas en <b>tu</b> cuenta de Google, no en la de nadie más. Esta página no envía nada a ningún sitio: solo te prepara el código y los enlaces. Haz primero el apartado que quieras (los dos son independientes).</p>
+
+<h2>📷 Carrusel de fotos</h2>
+<p>Muestra, una tras otra, las fotos de una carpeta de tu Drive. Las que añadas después entran solas.</p>
+<ol>
+  <li>En <a href="https://drive.google.com" target="_blank" rel="noopener">Google Drive</a> crea una carpeta con las fotos. Pulsa en ella con el botón derecho → <b>Compartir</b> → «Acceso general» → <b>Cualquier persona con el enlace</b> (Lector).</li>
+  <li>Pega aquí el enlace de esa carpeta:
+    <label for="folder">Enlace o identificador de la carpeta</label>
+    <input type="text" id="folder" placeholder="https://drive.google.com/drive/folders/…" autocomplete="off">
+    <div class="muted" id="folderMsg"></div>
+  </li>
+  <li>Entra en <a href="https://script.google.com/home/projects/create" target="_blank" rel="noopener">script.google.com</a> (nuevo proyecto), borra lo que haya y pega este código:
+    <div class="code"><pre id="carCode"></pre><button type="button" data-copy="carCode">Copiar código</button></div>
+  </li>
+  <li>Arriba a la derecha: <b>Implementar → Nueva implementación</b> → engranaje → <b>Aplicación web</b>. «Ejecutar como»: <i>Yo</i>. «Quién tiene acceso»: <b>Cualquier persona</b>. Pulsa Implementar y acepta los permisos (te avisará de que la app no está verificada: «Configuración avanzada → Ir a…» — es tu propio script).</li>
+  <li>Copia la <b>URL de la aplicación web</b> (acaba en <code>/exec</code>) y pégala aquí:
+    <label for="carUrl">URL del script</label>
+    <input type="text" id="carUrl" placeholder="https://script.google.com/macros/s/…/exec" autocomplete="off">
+    <label for="secs">Segundos entre foto y foto</label>
+    <input type="text" id="secs" value="6" style="width:80px">
+  </li>
+</ol>
+<div class="out" id="carOut">El enlace saldrá aquí.</div>
+<div class="row"><button class="main" type="button" id="carCopy">Copiar enlace</button><button type="button" id="carTest">Probar</button><span id="carTestMsg" class="muted"></span></div>
+
+<h2>📝 Bloc de notas</h2>
+<p>Un bloc que se guarda solo y se sincroniza entre tus aparatos. El texto queda guardado dentro de tu propio script de Google (no necesita acceso a tu Drive).</p>
+<ol>
+  <li>Esta es tu clave (la inventa esta página; solo quien tenga el enlace con la clave puede leer y escribir):
+    <div class="out" id="key"></div>
+    <div class="row"><button type="button" id="newKey">Generar otra</button></div>
+  </li>
+  <li>En <a href="https://script.google.com/home/projects/create" target="_blank" rel="noopener">script.google.com</a> crea <b>otro</b> proyecto nuevo, borra lo que haya y pega este código (ya lleva tu clave):
+    <div class="code"><pre id="notCode"></pre><button type="button" data-copy="notCode">Copiar código</button></div>
+  </li>
+  <li>Impleméntalo igual que antes (<b>Aplicación web</b>, ejecutar como <i>Yo</i>, acceso <b>Cualquier persona</b>) y pega aquí la URL:
+    <label for="notUrl">URL del script</label>
+    <input type="text" id="notUrl" placeholder="https://script.google.com/macros/s/…/exec" autocomplete="off">
+    <label for="notName">Título pequeño encima del bloc (opcional)</label>
+    <input type="text" id="notName" placeholder="Letras de canciones">
+  </li>
+</ol>
+<div class="out" id="notOut">El enlace saldrá aquí.</div>
+<div class="row"><button class="main" type="button" id="notCopy">Copiar enlace</button><button type="button" id="notTest">Probar</button><span id="notTestMsg" class="muted"></span></div>
+<p class="muted">Para tener varios blocs distintos, añade al final del enlace <code>&amp;nota=letras</code>, <code>&amp;nota=ideas</code>… (cada nombre es un bloc).</p>
+
+<h2>Cómo usar los enlaces</h2>
+<ul>
+  <li><b>En Notion:</b> escribe <code>/incrustar</code> (o <code>/embed</code>), pega el enlace y ajusta el tamaño.</li>
+  <li><b>Sin Notion:</b> abre el enlace en el navegador y guárdalo en favoritos, o «Añadir a pantalla de inicio» en el móvil.</li>
+</ul>
+<div class="note">Los enlaces contienen tu clave y la dirección de tu script. No los publiques; los widgets de esta web son públicos, pero <b>tus datos solo los ve quien tenga tu enlace</b>.</div>
+</main>
+<script>
+const CAR = "// Carrusel de fotos (widget carrusel.html).\n// Lista las fotos de UNA carpeta de tu Drive para que el widget las muestre.\n// Las fotos nuevas que pongas en la carpeta aparecen solas.\nconst CARPETA = 'PON-AQUI-EL-ID-DE-LA-CARPETA';\n\nfunction doGet() {\n  const files = [];\n  try {\n    const it = DriveApp.getFolderById(CARPETA).getFiles();\n    while (it.hasNext()) {\n      const f = it.next();\n      if (/^image\\//.test(f.getMimeType())) files.push({ id: f.getId(), name: f.getName(), t: f.getLastUpdated().getTime() });\n    }\n  } catch (err) {\n    return ContentService.createTextOutput(JSON.stringify({ files: [], error: 'carpeta' })).setMimeType(ContentService.MimeType.JSON);\n  }\n  return ContentService.createTextOutput(JSON.stringify({ files: files })).setMimeType(ContentService.MimeType.JSON);\n}\n", NOT = "// Bloc de notas de Notion (widget notas.html).\n// Guarda el texto dentro de este mismo script: no necesita permiso para tu Drive ni para nada m\u00e1s.\n// Solo responde a quien lleve la clave, que va en el enlace del widget (despu\u00e9s de #).\nconst CLAVE = 'PON-AQUI-LA-CLAVE';\nconst TROZO = 2800;                 // caracteres por trozo (cada valor guardado admite unos 9 kB)\nconst MAXIMO = 80000;               // caracteres por nota\nconst MEDIA_HORA = 30 * 60 * 1000;  // cada cu\u00e1nto se guarda una copia de seguridad\n\nfunction doGet() {\n  return ContentService.createTextOutput('Bloc de notas: funciona.');\n}\n\nfunction doPost(e) {\n  let p = {};\n  try { p = JSON.parse(e.postData.contents); } catch (err) { return json({ error: 'formato' }); }\n  if (p.k !== CLAVE) return json({ error: 'clave' });\n  const nota = String(p.nota || 'principal').replace(/[^A-Za-z0-9_-]/g, '').slice(0, 40) || 'principal';\n  const props = PropertiesService.getScriptProperties();\n  if (p.op === 'leer') return json(leer(props, 'n', nota));\n  if (p.op === 'copia') return json(leer(props, 's', nota));\n  if (p.op !== 'guardar') return json({ error: 'op' });\n  const texto = String(p.text == null ? '' : p.text);\n  if (texto.length > MAXIMO) return json({ error: 'largo', max: MAXIMO });\n  const lock = LockService.getScriptLock();\n  lock.waitLock(15000);\n  try {\n    const ahora = Date.now(), actual = leer(props, 'n', nota), copia = leer(props, 's', nota);\n    // Si otro aparato guard\u00f3 mientras tanto, no se pisa: se devuelve lo que hay para juntarlo\n    if (p.base != null && Number(p.base) !== actual.rev) return json(Object.assign({ conflict: true }, actual));\n    if (actual.text && actual.text !== texto && (p.snap || ahora - copia.t > MEDIA_HORA)) {\n      escribir(props, 's', nota, actual.text, actual.rev, ahora, copia.parts);\n    }\n    const rev = actual.rev + 1;\n    escribir(props, 'n', nota, texto, rev, ahora, actual.parts);\n    return json({ ok: true, rev: rev, t: ahora });\n  } finally {\n    lock.releaseLock();\n  }\n}\n\nfunction leer(props, tipo, nota) {\n  const all = props.getProperties(), pre = tipo + ':' + nota + ':';\n  const parts = Number(all[pre + 'parts'] || 0);\n  let text = '';\n  for (let i = 0; i < parts; i++) text += all[pre + i] || '';\n  return { text: text, rev: Number(all[pre + 'rev'] || 0), t: Number(all[pre + 't'] || 0), parts: parts };\n}\n\nfunction trocear(texto) {\n  const out = [];\n  let i = 0;\n  while (i < texto.length) {\n    let j = Math.min(texto.length, i + TROZO);\n    const c = texto.charCodeAt(j - 1);\n    if (j < texto.length && c >= 0xD800 && c <= 0xDBFF) j--;   // no partir un emoji por la mitad\n    out.push(texto.slice(i, j));\n    i = j;\n  }\n  return out.length ? out : [''];\n}\n\nfunction escribir(props, tipo, nota, texto, rev, t, antes) {\n  const pre = tipo + ':' + nota + ':', data = {}, trozos = trocear(texto);\n  trozos.forEach(function (s, i) { data[pre + i] = s; });\n  data[pre + 'parts'] = String(trozos.length);\n  data[pre + 'rev'] = String(rev);\n  data[pre + 't'] = String(t);\n  props.setProperties(data);\n  for (let i = trozos.length; i < (antes || 0); i++) props.deleteProperty(pre + i);\n}\n\nfunction json(o) {\n  return ContentService.createTextOutput(JSON.stringify(o)).setMimeType(ContentService.MimeType.JSON);\n}\n";
+const $ = id => document.getElementById(id);
+const base = n => new URL(n, location.href).href;
+const copy = async (text, msgEl) => { try { await navigator.clipboard.writeText(text); } catch (e) { window.prompt('Copia esto:', text); } };
+// Carrusel
+function folderId(v) { v = v.trim(); const m = v.match(/folders\/([\w-]{10,})/) || v.match(/[?&]id=([\w-]{10,})/); return m ? m[1] : (/^[\w-]{15,}$/.test(v) ? v : ''); }
+function paintCar() {
+  const id = folderId($('folder').value);
+  $('folderMsg').textContent = $('folder').value ? (id ? 'Carpeta reconocida ✓' : 'No reconozco ese enlace: tiene que ser el de una carpeta de Drive.') : '';
+  $('carCode').textContent = CAR.replace('PON-AQUI-EL-ID-DE-LA-CARPETA', id || 'PON-AQUI-EL-ID-DE-LA-CARPETA');
+  const u = $('carUrl').value.trim(), s = parseFloat($('secs').value) || 6;
+  $('carOut').textContent = u ? base('carrusel.html') + '#api=' + encodeURIComponent(u) + '&s=' + s : 'El enlace saldrá aquí.';
+}
+['folder', 'carUrl', 'secs'].forEach(i => $(i).addEventListener('input', paintCar));
+// Notas
+function newKey() { const a = new Uint8Array(12); crypto.getRandomValues(a); return Array.from(a, b => 'abcdefghjkmnpqrstuvwxyz23456789'[b % 31]).join(''); }
+let KEY = (() => { try { return localStorage.getItem('conectar:clave') || ''; } catch (e) { return ''; } })() || newKey();
+function paintNot() {
+  try { localStorage.setItem('conectar:clave', KEY); } catch (e) {}
+  $('key').textContent = KEY;
+  $('notCode').textContent = NOT.replace('PON-AQUI-LA-CLAVE', KEY);
+  const u = $('notUrl').value.trim(), t = $('notName').value.trim();
+  $('notOut').textContent = u ? base('notas.html') + '#api=' + encodeURIComponent(u) + '&k=' + KEY + (t ? '&titulo=' + encodeURIComponent(t) : '') : 'El enlace saldrá aquí.';
+}
+$('newKey').onclick = () => { KEY = newKey(); paintNot(); };
+['notUrl', 'notName'].forEach(i => $(i).addEventListener('input', paintNot));
+// Copiar / probar
+document.querySelectorAll('[data-copy]').forEach(b => b.onclick = () => { copy($(b.dataset.copy).textContent); b.textContent = 'Copiado ✓'; setTimeout(() => b.textContent = 'Copiar código', 1500); });
+$('carCopy').onclick = () => { const t = $('carOut').textContent; if (t.startsWith('http')) copy(t); };
+$('notCopy').onclick = () => { const t = $('notOut').textContent; if (t.startsWith('http')) copy(t); };
+function say(el, text, cls) { el.textContent = text; el.className = cls || 'muted'; }
+$('carTest').onclick = async () => {
+  const u = $('carUrl').value.trim(), m = $('carTestMsg'); if (!u) return say(m, 'Pega primero la URL del script.', 'bad');
+  say(m, 'Probando…');
+  try { const j = await (await fetch(u, { redirect: 'follow' })).json(); if (j.error) say(m, 'El script funciona, pero no encuentra la carpeta: revisa el identificador del código.', 'bad'); else say(m, 'Funciona: ' + (j.files || []).length + ' fotos en la carpeta.', 'ok'); }
+  catch (e) { say(m, 'No se puede leer. ¿Está implementado con acceso «Cualquier persona»?', 'bad'); }
+};
+$('notTest').onclick = async () => {
+  const u = $('notUrl').value.trim(), m = $('notTestMsg'); if (!u) return say(m, 'Pega primero la URL del script.', 'bad');
+  say(m, 'Probando…');
+  try { const j = await (await fetch(u, { method: 'POST', body: JSON.stringify({ k: KEY, nota: 'principal', op: 'leer' }), redirect: 'follow' })).json(); if (j.error === 'clave') say(m, 'El script responde, pero la clave del código no coincide con la de arriba.', 'bad'); else say(m, 'Funciona ✓', 'ok'); }
+  catch (e) { say(m, 'No se puede leer. ¿Está implementado con acceso «Cualquier persona»?', 'bad'); }
+};
+paintCar(); paintNot();
+</script>
+</body>
+</html>

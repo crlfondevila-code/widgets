@@ -1,0 +1,408 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Acordes</title>
+<style>
+:root { --bg:#fff; --card:#f7f7f5; --text:#37352f; --muted:#787774; --line:#e9e9e7; --on:#37352f; --onText:#fff; --acc:#2e7d4f; --accSoft:rgba(46,125,79,.14); --warn:#b35c00; }
+@media (prefers-color-scheme: dark) { :root { --bg:#191919; --card:#232323; --text:#e8e7e4; --muted:#9b9a97; --line:#303030; --on:#e8e7e4; --onText:#191919; --acc:#6fbf8e; --accSoft:rgba(111,191,142,.16); --warn:#e0a458; } }
+* { box-sizing: border-box; }
+html, body { margin: 0; background: var(--bg); color: var(--text); }
+body { font: 14px/1.4 ui-sans-serif, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; -webkit-font-smoothing: antialiased; }
+button, input, select, textarea { font: inherit; color: inherit; }
+button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible { outline: 2px solid var(--acc); outline-offset: 2px; }
+.wrap { padding: 12px; display: grid; gap: 10px; max-width: 760px; margin: 0 auto; }
+
+/* Pantalla del acorde */
+.stage { background: var(--card); border-radius: 12px; padding: 12px 14px 14px; display: grid; gap: 8px; position: relative; overflow: hidden; }
+.now { display: flex; align-items: baseline; gap: 14px; min-height: 84px; }
+.chord { font: 600 64px/1 Georgia, "Iowan Old Style", "Palatino Linotype", serif; letter-spacing: -.01em; }
+.chord.count { color: var(--muted); font-family: ui-sans-serif, system-ui, sans-serif; }
+.next { margin-left: auto; text-align: right; color: var(--muted); font-size: 12px; }
+.next b { display: block; font: 600 24px/1.2 Georgia, "Iowan Old Style", serif; color: var(--text); opacity: .7; }
+.beats { display: flex; gap: 6px; flex-wrap: wrap; min-height: 16px; }
+.beats i { width: 14px; height: 14px; border-radius: 50%; border: 2px solid var(--muted); opacity: .5; transition: background .06s, opacity .06s, transform .06s; }
+.beats i.on { background: var(--acc); border-color: var(--acc); opacity: 1; transform: scale(1.18); }
+.beats i.on.strong { background: var(--text); border-color: var(--text); }
+.bar { height: 5px; background: var(--line); border-radius: 5px; overflow: hidden; }
+.bar > div { height: 100%; width: 0; background: var(--acc); }
+.flash { position: absolute; inset: 0; background: var(--acc); opacity: 0; pointer-events: none; }
+.flash.go { animation: fl .22s ease-out; }
+@keyframes fl { from { opacity: .18; } to { opacity: 0; } }
+
+/* Lista de acordes */
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip { border: 1px solid var(--line); background: var(--bg); border-radius: 8px; padding: 5px 10px; cursor: pointer; font: 600 15px/1.2 Georgia, "Iowan Old Style", serif; position: relative; min-width: 44px; text-align: center; }
+.chip small { display: block; font: 11px/1.2 ui-sans-serif, system-ui, sans-serif; color: var(--muted); font-weight: 400; }
+.chip.cur { background: var(--on); color: var(--onText); border-color: var(--on); }
+.chip.cur small { color: inherit; opacity: .7; }
+.chip.bar-start { margin-left: 6px; }
+
+/* Controles */
+.row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.play { border: 0; background: var(--on); color: var(--onText); border-radius: 999px; padding: 9px 22px; font-weight: 600; cursor: pointer; min-width: 96px; }
+.btn { border: 1px solid var(--line); background: var(--bg); border-radius: 8px; padding: 6px 10px; cursor: pointer; white-space: nowrap; }
+.btn:hover { background: var(--card); }
+.btn.on { background: var(--on); color: var(--onText); border-color: var(--on); }
+.bpm { display: flex; align-items: center; gap: 4px; }
+.bpm input[type=number] { width: 64px; text-align: center; font-weight: 600; font-size: 16px; padding: 5px 4px; border: 1px solid var(--line); background: var(--bg); border-radius: 8px; }
+.bpm small, .lab { color: var(--muted); font-size: 12px; }
+input[type=range] { accent-color: var(--muted); }
+.slider { flex: 1 1 140px; min-width: 120px; }
+select { border: 1px solid var(--line); background: var(--bg); border-radius: 8px; padding: 6px 8px; }
+textarea { width: 100%; resize: vertical; min-height: 56px; border: 1px solid var(--line); background: var(--bg); border-radius: 10px; padding: 8px 10px; font: 15px/1.5 ui-monospace, "SF Mono", Menlo, Consolas, monospace; }
+textarea.bad { border-color: var(--warn); }
+.help { color: var(--muted); font-size: 12px; margin: 0; }
+.help code { background: var(--card); padding: 0 4px; border-radius: 4px; }
+.ex { display: flex; flex-wrap: wrap; gap: 5px; align-items: center; }
+.ex .btn { padding: 3px 9px; font-size: 12.5px; border-radius: 999px; }
+.status { font-size: 12px; color: var(--muted); min-height: 16px; }
+@media (max-width: 420px) { .chord { font-size: 52px; } .now { min-height: 70px; } }
+@media (prefers-reduced-motion: reduce) { .flash.go { animation: none; } .beats i { transition: none; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="stage" id="stage">
+    <div class="flash" id="flash"></div>
+    <div class="now">
+      <div class="chord" id="chord" aria-live="off">—</div>
+      <div class="next" id="next"></div>
+    </div>
+    <div class="beats" id="beats" aria-hidden="true"></div>
+    <div class="bar"><div id="prog"></div></div>
+  </div>
+
+  <div class="chips" id="chips" role="list" aria-label="Acordes de la progresión"></div>
+
+  <div class="row">
+    <button class="play" id="play" type="button">▶ Tocar</button>
+    <div class="bpm">
+      <button class="btn" id="m5" type="button" aria-label="Bajar 5 pulsaciones por minuto">−5</button>
+      <button class="btn" id="m1" type="button" aria-label="Bajar 1">−</button>
+      <input id="bpm" type="number" min="30" max="260" value="90" aria-label="Pulsaciones por minuto">
+      <button class="btn" id="p1" type="button" aria-label="Subir 1">+</button>
+      <button class="btn" id="p5" type="button" aria-label="Subir 5 pulsaciones por minuto">+5</button>
+      <small>bpm</small>
+    </div>
+    <button class="btn" id="tap" type="button" title="Toca al ritmo (tecla T)">Tap</button>
+  </div>
+
+  <div class="row">
+    <span class="lab">Compás</span>
+    <select id="bpb" aria-label="Pulsos por compás">
+      <option value="2">2/4</option><option value="3">3/4</option><option value="4" selected>4/4</option>
+      <option value="5">5/4</option><option value="6">6/4</option><option value="7">7/4</option>
+    </select>
+    <button class="btn on" id="click" type="button" aria-pressed="true">🔊 Clic</button>
+    <input class="slider" id="vol" type="range" min="0" max="1" step="0.01" value="0.7" aria-label="Volumen del clic">
+    <button class="btn" id="loop" type="button" aria-pressed="true">🔁 Bucle</button>
+    <button class="btn" id="count" type="button" aria-pressed="false" title="Un compás de cuenta atrás antes de empezar">Cuenta</button>
+  </div>
+
+  <div class="row">
+    <span class="lab">Tono</span>
+    <button class="btn" id="tm" type="button" aria-label="Bajar un semitono">♭</button>
+    <span id="tv" style="min-width:34px;text-align:center;font-weight:600">0</span>
+    <button class="btn" id="tp" type="button" aria-label="Subir un semitono">♯</button>
+    <span class="lab">semitonos</span>
+    <button class="btn" id="link" type="button" style="margin-left:auto" title="Copia un enlace que guarda esta progresión y este tempo">🔗 Copiar enlace</button>
+  </div>
+
+  <textarea id="prog-text" spellcheck="false" aria-label="Progresión de acordes" placeholder="Am | F | C | G"></textarea>
+  <p class="help">Escribe los acordes separados por espacios o <code>|</code>. Cada uno dura un compás; <code>Am:2</code> dura 2 pulsos, <code>%</code> repite el anterior. Ejemplo: <code>C:2 G:2 | Am | F</code></p>
+  <div class="ex" id="ex"><span class="lab">Ejemplos:</span></div>
+  <div class="status" id="status" role="status" aria-live="polite"></div>
+</div>
+
+<script>
+// Marcador de acordes: un metrónomo que además va diciendo en qué acorde estás.
+// Todo se guarda en el enlace, después de # (no sale de tu navegador):
+//   #prog=Am|F|C|G   → la progresión (los espacios se escriben como _ o +)
+//   &bpm=90          → pulsaciones por minuto
+//   &c=4             → pulsos por compás
+//   &loop=1/0        → repetir al llegar al final
+//   &clic=1/0        → que suene el clic
+//   &cuenta=1        → un compás de cuenta atrás al empezar
+//   &t=0             → transposición en semitonos
+(() => {
+  const $ = id => document.getElementById(id);
+  const P = new URLSearchParams(location.hash.slice(1));
+  const LS = 'acordes:v1';
+  const saved = (() => { try { return JSON.parse(localStorage.getItem(LS) || 'null') || {}; } catch (e) { return {}; } })();
+  const clamp = (n, a, b) => Math.min(b, Math.max(a, n));
+  const EXAMPLES = [
+    ['Pop (I–V–vi–IV)', 'C G Am F', 100, 4],
+    ['Blues de 12 compases', 'A A A A | D D A A | E D A E', 92, 4],
+    ['Jazz ii–V–I', 'Dm7 | G7 | Cmaj7:2 A7:2', 120, 4],
+    ['Canon de Pachelbel', 'D A Bm F#m G D G A', 72, 4],
+    ['Vals', 'Am | Dm | E7 | Am', 140, 3],
+    ['Andaluza', 'Am G F E', 96, 4]
+  ];
+
+  // ---------- Estado ----------
+  const st = {
+    text: P.get('prog') != null ? P.get('prog').replace(/[_+]/g, ' ') : (saved.text != null ? saved.text : 'Am | F | C | G'),
+    bpm: clamp(parseFloat(P.get('bpm') || saved.bpm) || 90, 30, 260),
+    bpb: clamp(parseInt(P.get('c') || saved.bpb, 10) || 4, 2, 7),
+    loop: P.has('loop') ? P.get('loop') !== '0' : saved.loop !== false,
+    click: P.has('clic') ? P.get('clic') !== '0' : saved.click !== false,
+    count: P.has('cuenta') ? P.get('cuenta') === '1' : !!saved.count,
+    t: clamp(parseInt(P.get('t') || saved.t, 10) || 0, -11, 11),
+    vol: clamp(parseFloat(saved.vol), 0, 1)
+  };
+  if (isNaN(st.vol)) st.vol = 0.7;
+
+  // ---------- Leer la progresión ----------
+  let chords = [];   // { raw, beats }
+  function parse(text) {
+    const out = []; let bad = 0;
+    const tokens = text.replace(/\|/g, ' | ').split(/[\s,;]+/).filter(Boolean);
+    for (const tk of tokens) {
+      if (tk === '|' || tk === '||') continue;
+      const m = tk.match(/^(.+?)(?::(\d{1,2}))?$/);
+      let name = m[1], beats = m[2] ? clamp(parseInt(m[2], 10), 1, 32) : st.bpb;
+      if (name === '%') { if (out.length) out.push({ raw: out[out.length - 1].raw, beats }); else bad++; continue; }
+      if (name === '-' || name === '.') { out.push({ raw: '·', beats, rest: true }); continue; }
+      if (!/^[A-Ga-g]/.test(name) && !/^(N\.?C\.?|%)$/i.test(name)) { bad++; }
+      out.push({ raw: name, beats });
+    }
+    return { out: out.slice(0, 128), bad };
+  }
+
+  // ---------- Transponer y mostrar ----------
+  const SHARP = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+  const FLAT = ['C', 'Db', 'D', 'Eb', 'E', 'F', 'Gb', 'G', 'Ab', 'A', 'Bb', 'B'];
+  const IDX = { C: 0, D: 2, E: 4, F: 5, G: 7, A: 9, B: 11 };
+  const noteOf = (letter, acc) => (IDX[letter.toUpperCase()] + (acc === '#' ? 1 : acc === 'b' ? -1 : 0) + 12) % 12;
+  function shown(raw, t) {
+    if (!t) return pretty(raw);
+    const flats = /(^|[\s|/])[A-G]b/.test(st.text) || [5, 10, 3, 8, 1].includes(((t % 12) + 12) % 12);
+    const tab = flats ? FLAT : SHARP;
+    const sh = s => s.replace(/^([A-Ga-g])([#b]?)/, (_, l, a) => tab[(noteOf(l, a) + t + 120) % 12]);
+    const parts = raw.split('/');
+    const body = sh(parts[0]);
+    return pretty(parts.length > 1 ? body + '/' + sh(parts[1]) : body);
+  }
+  const pretty = s => s.replace(/([A-G])#/g, '$1♯').replace(/([A-G])b/g, '$1♭');
+
+  // ---------- Pantalla ----------
+  const chordEl = $('chord'), nextEl = $('next'), beatsEl = $('beats'), progEl = $('prog'), chipsEl = $('chips'), flashEl = $('flash');
+  let chipEls = [], curChord = -2, curBeatDots = 0;
+
+  function drawChips() {
+    chipsEl.replaceChildren(); chipEls = [];
+    let acc = 0;
+    chords.forEach((c, i) => {
+      const b = document.createElement('button');
+      b.type = 'button'; b.className = 'chip'; b.setAttribute('role', 'listitem');
+      b.textContent = c.rest ? '·' : shown(c.raw, st.t);
+      if (c.beats !== st.bpb) { const s = document.createElement('small'); s.textContent = c.beats + ' pulsos'; b.append(s); }
+      b.onclick = () => jump(i);
+      chipsEl.append(b); chipEls.push(b); acc += c.beats;
+    });
+    if (!chords.length) { const p = document.createElement('span'); p.className = 'lab'; p.textContent = 'Escribe unos acordes abajo.'; chipsEl.append(p); }
+    paint(curChord, -1, 0);
+  }
+  function dots(n) {
+    if (n === curBeatDots && beatsEl.children.length === n) return;
+    beatsEl.replaceChildren();
+    for (let k = 0; k < Math.min(n, 32); k++) beatsEl.append(document.createElement('i'));
+    curBeatDots = n;
+  }
+  function paint(ci, bi, frac) {
+    if (ci !== curChord || ci === -2) {
+      curChord = ci;
+      chipEls.forEach((c, k) => c.classList.toggle('cur', k === ci));
+      if (ci >= 0 && chords[ci]) {
+        chordEl.textContent = chords[ci].rest ? '·' : shown(chords[ci].raw, st.t); chordEl.classList.remove('count');
+        const nx = chords[ci + 1] || (st.loop ? chords[0] : null);
+        nextEl.replaceChildren();
+        if (nx) { nextEl.append('siguiente'); const b = document.createElement('b'); b.textContent = nx.rest ? '·' : shown(nx.raw, st.t); nextEl.append(b); }
+        dots(chords[ci].beats);
+        if (chipEls[ci] && chipEls[ci].scrollIntoView) chipEls[ci].scrollIntoView({ block: 'nearest', inline: 'nearest' });
+      } else if (ci === -1) {
+        chordEl.classList.add('count'); nextEl.replaceChildren();
+        if (chords[0]) { nextEl.append('empieza con'); const b = document.createElement('b'); b.textContent = shown(chords[0].raw, st.t); nextEl.append(b); }
+        dots(st.bpb);
+      } else {
+        chordEl.textContent = chords.length ? shown(chords[0].raw, st.t) : '—'; chordEl.classList.remove('count');
+        nextEl.replaceChildren(); dots(chords[0] ? chords[0].beats : st.bpb);
+      }
+    }
+    const total = ci >= 0 && chords[ci] ? chords[ci].beats : st.bpb;
+    [...beatsEl.children].forEach((d, k) => { d.classList.toggle('on', k === bi); d.classList.toggle('strong', k === bi && bi % st.bpb === 0); });
+    if (ci === -1 && bi >= 0) chordEl.textContent = String(bi + 1);
+    progEl.style.width = bi < 0 ? '0%' : Math.min(100, ((bi + frac) / total) * 100) + '%';
+  }
+
+  // ---------- Audio y reloj ----------
+  let ctx = null, master = null, playing = false, timerId = null, raf = 0;
+  let nextTime = 0, sc = 0, sb = 0, counting = false, startAt = 0, queue = [], lastEvt = null, ended = false;
+  const spb = () => 60 / st.bpm;
+
+  function audio() {
+    if (ctx) return ctx;
+    ctx = new (window.AudioContext || window.webkitAudioContext)();
+    master = ctx.createGain(); master.gain.value = st.vol; master.connect(ctx.destination);
+    return ctx;
+  }
+  function tick(t, strong, bar) {
+    if (!st.click) return;
+    const o = ctx.createOscillator(), g = ctx.createGain();
+    o.type = 'triangle'; o.frequency.value = strong ? 1568 : bar ? 1175 : 880;
+    g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(strong ? 1 : bar ? .8 : .55, t + 0.002); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.06);
+    o.connect(g); g.connect(master); o.start(t); o.stop(t + 0.08);
+  }
+  function schedule() {
+    const horizon = ctx.currentTime + 0.12;
+    while (nextTime < horizon && !ended) {
+      if (counting) {
+        tick(nextTime, sb === 0, false);
+        queue.push({ t: nextTime, ci: -1, bi: sb, len: spb() });
+        nextTime += spb();
+        if (++sb >= st.bpb) { counting = false; sb = 0; sc = startAt; }
+        continue;
+      }
+      if (!chords.length) { ended = true; break; }
+      if (sc >= chords.length) { sc = 0; sb = 0; }
+      const c = chords[sc];
+      const strong = sb === 0, bar = sb % st.bpb === 0;
+      if (!c.rest) tick(nextTime, strong, bar); else if (bar) tick(nextTime, false, true);
+      queue.push({ t: nextTime, ci: sc, bi: sb, len: spb() });
+      nextTime += spb();
+      if (++sb >= c.beats) {
+        sb = 0; sc++;
+        if (sc >= chords.length) {
+          if (st.loop) sc = 0; else { queue.push({ t: nextTime, end: true }); ended = true; }
+        }
+      }
+    }
+  }
+  function frame() {
+    if (!playing) return;
+    const now = ctx.currentTime - (ctx.outputLatency || 0);
+    while (queue.length && queue[0].t <= now) {
+      const e = queue.shift();
+      if (e.end) { stop(true); return; }
+      lastEvt = e;
+      paint(e.ci, e.bi, 0);
+      if (e.bi === 0) { flashEl.classList.remove('go'); void flashEl.offsetWidth; flashEl.classList.add('go'); }
+    }
+    if (lastEvt && !lastEvt.end) progEl.style.width = Math.min(100, ((lastEvt.bi + clamp((now - lastEvt.t) / lastEvt.len, 0, 1)) / (lastEvt.ci >= 0 && chords[lastEvt.ci] ? chords[lastEvt.ci].beats : st.bpb)) * 100) + '%';
+    raf = requestAnimationFrame(frame);
+  }
+  async function play(from) {
+    audio(); if (ctx.state === 'suspended') await ctx.resume();
+    if (playing) stop();
+    if (from == null) from = startIdx;
+    if (!chords.length) { setStatus('No hay acordes que tocar.', true); return; }
+    playing = true; ended = false; queue = []; lastEvt = null;
+    startAt = clamp(from || 0, 0, chords.length - 1); sc = startAt; sb = 0;
+    counting = st.count; nextTime = ctx.currentTime + 0.08;
+    $('play').textContent = '■ Parar'; $('play').setAttribute('aria-label', 'Parar');
+    schedule(); timerId = setInterval(schedule, 25); raf = requestAnimationFrame(frame);
+    setStatus('');
+  }
+  function stop(finished) {
+    playing = false; clearInterval(timerId); cancelAnimationFrame(raf); queue = []; lastEvt = null;
+    $('play').textContent = '▶ Tocar'; $('play').setAttribute('aria-label', 'Tocar');
+    curChord = -2; paint(-2, -1, 0);
+    if (finished) setStatus('Fin de la progresión.');
+  }
+  let startIdx = 0;
+  function jump(i) {
+    startIdx = i;
+    if (playing) { queue = []; counting = false; sc = i; sb = 0; ended = false; nextTime = ctx.currentTime + 0.05; }
+    else { paint(i, -1, 0); chipEls.forEach((c, k) => c.classList.toggle('cur', k === i)); }
+  }
+
+  // ---------- Controles ----------
+  function setStatus(t, warn) { const s = $('status'); s.textContent = t; s.style.color = warn ? 'var(--warn)' : ''; }
+  function setBpm(v) { st.bpm = clamp(Math.round(v), 30, 260); $('bpm').value = st.bpm; persist(); }
+  $('bpm').onchange = e => setBpm(parseFloat(e.target.value) || st.bpm);
+  $('m1').onclick = () => setBpm(st.bpm - 1); $('p1').onclick = () => setBpm(st.bpm + 1);
+  $('m5').onclick = () => setBpm(st.bpm - 5); $('p5').onclick = () => setBpm(st.bpm + 5);
+  $('play').onclick = () => playing ? stop() : play();
+  $('bpb').onchange = e => { st.bpb = parseInt(e.target.value, 10); reparse(); };
+  $('click').onclick = e => { st.click = !st.click; toggle(e.currentTarget, st.click); $('click').textContent = st.click ? '🔊 Clic' : '🔇 Sin clic'; persist(); };
+  $('loop').onclick = e => { st.loop = !st.loop; toggle(e.currentTarget, st.loop); persist(); };
+  $('count').onclick = e => { st.count = !st.count; toggle(e.currentTarget, st.count); persist(); };
+  $('vol').oninput = e => { st.vol = +e.target.value; if (master) master.gain.setTargetAtTime(st.vol, ctx.currentTime, 0.02); persist(); };
+  $('tm').onclick = () => setT(st.t - 1); $('tp').onclick = () => setT(st.t + 1);
+  $('tv').ondblclick = () => setT(0);
+  $('tv').title = 'Doble clic para volver al tono original';
+  function setT(v) { st.t = clamp(v, -11, 11); $('tv').textContent = (st.t > 0 ? '+' : '') + st.t; curChord = -2; drawChips(); persist(); }
+  function toggle(btn, on) { btn.classList.toggle('on', on); btn.setAttribute('aria-pressed', on ? 'true' : 'false'); }
+
+  let taps = [];
+  function tap() {
+    const n = performance.now();
+    if (taps.length && n - taps[taps.length - 1] > 2200) taps = [];
+    taps.push(n); if (taps.length > 6) taps.shift();
+    if (taps.length >= 2) { const iv = (taps[taps.length - 1] - taps[0]) / (taps.length - 1); setBpm(60000 / iv); }
+    else setStatus('Sigue tocando al ritmo…');
+  }
+  $('tap').onclick = tap;
+  document.addEventListener('keydown', e => {
+    if (/^(TEXTAREA|INPUT|SELECT)$/.test(e.target.tagName)) return;
+    if (e.key === ' ') { e.preventDefault(); $('play').click(); }
+    else if (e.key === 'ArrowUp') { e.preventDefault(); setBpm(st.bpm + (e.shiftKey ? 5 : 1)); }
+    else if (e.key === 'ArrowDown') { e.preventDefault(); setBpm(st.bpm - (e.shiftKey ? 5 : 1)); }
+    else if (e.key === 't' || e.key === 'T') tap();
+  });
+
+  const ta = $('prog-text');
+  ta.value = st.text;
+  ta.addEventListener('input', () => { st.text = ta.value; reparse(); });
+  function reparse() {
+    const r = parse(st.text);
+    chords = r.out; if (startIdx >= chords.length) startIdx = 0;
+    ta.classList.toggle('bad', !!r.bad);
+    if (r.bad) setStatus(r.bad + (r.bad === 1 ? ' símbolo no parece un acorde' : ' símbolos no parecen acordes') + ' (se tocan igualmente).', true); else if (!playing) setStatus('');
+    if (playing && sc >= chords.length) { sc = 0; sb = 0; }
+    curChord = -2; drawChips();
+    if (!playing) paint(-2, -1, 0);
+    persist();
+  }
+
+  // ---------- Guardar ----------
+  function hash() {
+    const q = new URLSearchParams();
+    q.set('prog', st.text.trim().replace(/\s+/g, '_')); q.set('bpm', st.bpm); q.set('c', st.bpb);
+    q.set('loop', st.loop ? 1 : 0); q.set('clic', st.click ? 1 : 0); if (st.count) q.set('cuenta', 1); if (st.t) q.set('t', st.t);
+    return q.toString();
+  }
+  let pt = null;
+  function persist() {
+    clearTimeout(pt);
+    pt = setTimeout(() => {
+      try { localStorage.setItem(LS, JSON.stringify({ text: st.text, bpm: st.bpm, bpb: st.bpb, loop: st.loop, click: st.click, count: st.count, t: st.t, vol: st.vol })); } catch (e) {}
+      try { history.replaceState(null, '', '#' + hash()); } catch (e) {}
+    }, 300);
+  }
+  $('link').onclick = async () => {
+    const url = location.href.split('#')[0] + '#' + hash();
+    try { await navigator.clipboard.writeText(url); setStatus('Enlace copiado: pégalo como «incrustar» en Notion para tener esta progresión guardada.'); }
+    catch (e) { window.prompt('Copia este enlace:', url); }
+  };
+
+  // ---------- Ejemplos ----------
+  const ex = $('ex');
+  EXAMPLES.forEach(([name, text, bpm, c]) => {
+    const b = document.createElement('button'); b.type = 'button'; b.className = 'btn'; b.textContent = name;
+    b.onclick = () => { if (playing) stop(); st.text = text; st.bpm = bpm; st.bpb = c; st.t = 0; ta.value = text; $('bpm').value = bpm; $('bpb').value = c; setT(0); reparse(); };
+    ex.append(b);
+  });
+
+  // ---------- Arranque ----------
+  $('bpm').value = st.bpm; $('bpb').value = st.bpb; $('vol').value = st.vol;
+  toggle($('click'), st.click); $('click').textContent = st.click ? '🔊 Clic' : '🔇 Sin clic';
+  toggle($('loop'), st.loop); toggle($('count'), st.count);
+  $('tv').textContent = (st.t > 0 ? '+' : '') + st.t;
+  reparse();
+})();
+</script>
+</body>
+</html>
