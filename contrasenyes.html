@@ -297,12 +297,10 @@ const BASE = location.href.split('#')[0];
 window.addEventListener('hashchange', () => location.reload());
 
 const DEFAULT_ITEMS = [
-  { s: 'Correu XTEC', u: 'cfondev2@xtec.cat', p: '', n: '' },
-  { s: 'Correu institut', u: 'cfondevila@inscaparrella.cat', p: '', n: '' },
-  { s: 'GICAR (ATRI, Esfer@)', u: '', p: '', n: '' },
-  { s: 'Moodle', u: '', p: '', n: '' },
-  { s: 'iEduca', u: '', p: '', n: '' },
-  { s: 'Wi-Fi centre', u: '', p: '', n: '' }
+  { s: 'Correu electrònic', u: '', p: '', n: '' },
+  { s: 'Wi-Fi de casa', u: '', p: '', n: '' },
+  { s: 'Banc', u: '', p: '', n: '' },
+  { s: 'Xarxes socials', u: '', p: '', n: '' }
 ];
 const AUTOLOCK_MS = 2 * 60 * 1000;
 
@@ -504,7 +502,7 @@ function renderSetup(items) {
   const editing = !!items;
   const rows = el('div');
   const addRow = (it = { s: '', u: '', p: '', n: '' }) => {
-    const svc = el('input', { type: 'text', class: 'svc', placeholder: 'Servei (p. ex. Correu XTEC)', value: it.s, autocomplete: 'off' });
+    const svc = el('input', { type: 'text', class: 'svc', placeholder: 'Servei (p. ex. Correu electrònic)', value: it.s, autocomplete: 'off' });
     const usr = el('input', { type: 'text', placeholder: 'Usuari', value: it.u, autocomplete: 'off', autocapitalize: 'off', spellcheck: 'false' });
     const pwd = el('input', { type: 'password', placeholder: 'Contrasenya', value: it.p, autocomplete: 'new-password' });
     const note = el('input', { type: 'text', placeholder: 'Nota (opcional)', value: it.n || '', autocomplete: 'off' });
