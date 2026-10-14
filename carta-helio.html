@@ -1,0 +1,351 @@
+<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Carta heliocéntrica</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&family=Marcellus&family=Noto+Sans+Symbols&family=Noto+Sans+Symbols+2&display=swap">
+<style>
+  :root {
+    --bg: #ECEEF3;
+    --surface: #F8F9FB;
+    --ink: #1A2030;
+    --muted: #5A6377;
+    --rule: #C9CFDA;
+    --faint: #DFE3EA;
+    --transit: #2A54C6;
+    --harm: #1F7D6C;
+    --tens: #BC3D35;
+    --conj: #8A6810;
+    --fire: rgba(205, 85, 55, .15);
+    --earth: rgba(105, 130, 50, .16);
+    --air: rgba(200, 160, 35, .18);
+    --water: rgba(55, 105, 200, .15);
+    --display: "Marcellus", "Cormorant Garamond", Georgia, serif;
+    --body: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+    --mono: "IBM Plex Mono", ui-monospace, "Cascadia Mono", Consolas, monospace;
+    --glyph: "Noto Sans Symbols", "Noto Sans Symbols 2", "Segoe UI Symbol", "Apple Symbols", "DejaVu Sans", sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      color-scheme: dark;
+      --bg: #0F121A; --surface: #161A24; --ink: #E3E6EE; --muted: #98A0B3; --rule: #2C3344; --faint: #1E2331;
+      --transit: #8AA8FF; --harm: #52C3AD; --tens: #F07D72; --conj: #D8B14E;
+      --fire: rgba(230, 110, 80, .22); --earth: rgba(140, 170, 80, .20); --air: rgba(230, 190, 70, .20); --water: rgba(90, 140, 240, .22);
+    }
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --bg: #0F121A; --surface: #161A24; --ink: #E3E6EE; --muted: #98A0B3; --rule: #2C3344; --faint: #1E2331;
+    --transit: #8AA8FF; --harm: #52C3AD; --tens: #F07D72; --conj: #D8B14E;
+    --fire: rgba(230, 110, 80, .22); --earth: rgba(140, 170, 80, .20); --air: rgba(230, 190, 70, .20); --water: rgba(90, 140, 240, .22);
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 14px/1.45 var(--body); }
+  .gl { font-family: var(--glyph); font-weight: 400; }
+  .bar { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 8px; }
+  .bar .grow { flex: 1 1 auto; }
+  input[type="datetime-local"] { font: 13px var(--mono); color: var(--ink); background: var(--surface); border: 1px solid var(--rule); border-radius: 6px; padding: 4px 6px; min-width: 0; max-width: 100%; }
+  button { font: 500 12.5px var(--body); color: var(--ink); background: var(--surface); border: 1px solid var(--rule); border-radius: 6px; padding: 4px 8px; cursor: pointer; line-height: 1.3; }
+  button:hover { border-color: var(--muted); }
+  button:focus-visible, input:focus-visible, summary:focus-visible { outline: 2px solid var(--transit); outline-offset: 2px; }
+  button.arrow { font-size: 16px; padding: 1px 9px; }
+  button.now { background: var(--transit); color: var(--surface); border-color: var(--transit); }
+  select { font: 500 12.5px var(--body); color: var(--ink); background: var(--surface); border: 1px solid var(--rule); border-radius: 6px; padding: 4px 6px; cursor: pointer; line-height: 1.3; max-width: 100%; }
+  select:hover { border-color: var(--muted); }
+  select:focus-visible { outline: 2px solid var(--transit); outline-offset: 2px; }
+  .seg { display: inline-flex; border: 1px solid var(--rule); border-radius: 6px; overflow: hidden; background: var(--surface); }
+  .seg button { border: 0; border-radius: 0; background: transparent; }
+  .seg button + button { border-left: 1px solid var(--rule); }
+  .seg button[aria-pressed="true"] { background: var(--ink); color: var(--surface); }
+  .err { margin: 16px; padding: 16px; border: 1px solid var(--tens); color: var(--tens); border-radius: 8px; }
+  .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+  main { height: 100%; display: flex; flex-direction: column; }
+  .wheel { flex: 1 1 auto; min-height: 0; margin: 0; padding: 0 6px; display: flex; }
+  .wheel svg { width: 100%; height: 100%; display: block; }
+  .legend { display: flex; flex-wrap: wrap; justify-content: center; gap: 2px 14px; margin: 0; padding: 4px 8px 8px; font-size: 12px; color: var(--muted); }
+  .legend > span { display: inline-flex; align-items: center; gap: 5px; }
+  .sw { width: 14px; height: 3px; border-radius: 2px; display: inline-block; }
+  @media (max-height: 460px), (max-width: 340px) { .legend { display: none; } }
+  @media (max-width: 420px) { .bar .grow { display: none; } }
+  /* SVG */
+  .z-ring { stroke: var(--rule); stroke-width: 1; }
+  .ring { fill: none; stroke: var(--rule); stroke-width: 1; }
+  .ring-strong { fill: none; stroke: var(--muted); stroke-width: 1.2; }
+  .tick { stroke: var(--muted); stroke-width: .8; }
+  .cusp { stroke: var(--rule); stroke-width: 1; }
+  .axis { stroke: var(--ink); stroke-width: 2; }
+  .s-sign { font-family: var(--glyph); font-size: 34px; fill: var(--ink); }
+  .s-natal { font-family: var(--glyph); font-size: 36px; fill: var(--ink); }
+  .s-transit { font-family: var(--glyph); font-size: 32px; fill: var(--transit); }
+  .s-natal.minor { font-size: 27px; }
+  .s-transit.minor { font-size: 25px; }
+  .s-natal.latin, .s-transit.latin { font-family: var(--body); font-style: italic; font-size: 23px; }
+  .fx-n { fill: none; stroke: var(--ink); stroke-width: 2; }
+  .fx-t { fill: none; stroke: var(--transit); stroke-width: 2; }
+  .s-deg { font-family: var(--mono); font-size: 18px; fill: var(--muted); }
+  .s-degt { font-family: var(--mono); font-size: 17px; fill: var(--transit); }
+  .s-house { font-family: var(--mono); font-size: 17px; fill: var(--muted); }
+  .s-axis { font-family: var(--body); font-size: 19px; font-weight: 600; fill: var(--ink); }
+  .lead { stroke: var(--muted); stroke-width: .8; }
+  .lead-t { stroke: var(--transit); stroke-width: .8; opacity: .8; }
+  .dot-n { fill: var(--ink); }
+  .dot-t { fill: var(--surface); stroke: var(--transit); stroke-width: 1.5; }
+  .inner { fill: var(--surface); }
+  @media (prefers-reduced-motion: no-preference) { .wheel svg .aspline { transition: opacity .2s; } }
+  main { height: auto; min-height: 100%; }
+  .wheel { flex: 0 0 auto; height: min(100vw, 560px); max-height: 80vh; }
+  .more { margin: 4px 10px 14px; border-top: 1px solid var(--rule); padding-top: 6px; }
+  .more summary { cursor: pointer; font-weight: 600; padding: 4px 0; }
+  ul.asp { list-style: none; margin: 6px 0; padding: 0; display: grid; gap: 6px; }
+  ul.asp li { border-left: 3px solid var(--c, var(--rule)); padding: 2px 0 2px 8px; }
+  ul.asp .line { display: flex; flex-wrap: wrap; gap: 4px 10px; }
+  ul.asp .meta { font-size: 12px; color: var(--muted); }
+  ul.asp li.empty { border-left-color: var(--rule); color: var(--muted); }
+  table.pos { border-collapse: collapse; width: 100%; font-size: 13px; margin-top: 8px; }
+  table.pos th, table.pos td { text-align: left; padding: 3px 6px; border-bottom: 1px solid var(--faint); font-weight: 400; }
+  table.pos thead th { color: var(--muted); font-size: 12px; }
+  table.pos .gl { font-size: 15px; }
+  .note { font-size: 12px; color: var(--muted); margin: 8px 0 0; }
+  :root { box-sizing: border-box; padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px); }
+</style></head><body>
+<main>
+  <nav class="bar" aria-label="Fecha de los tránsitos">
+    <button type="button" class="arrow" data-step="-1" aria-label="Retroceder">‹</button>
+    <label class="sr" for="when">Tránsitos para</label>
+    <input type="datetime-local" id="when" step="60">
+    <button type="button" class="arrow" data-step="1" aria-label="Avanzar">›</button>
+    <div class="seg" role="group" aria-label="Tamaño del paso">
+      <button type="button" data-unit="d" aria-pressed="true">día</button><button type="button" data-unit="m" aria-pressed="false">mes</button><button type="button" data-unit="y" aria-pressed="false">año</button>
+    </div>
+    <button type="button" class="now" id="now">Ahora</button>
+    <label class="sr" for="pts">Puntos que se ven</label>
+    <select id="pts" title="Puntos que se ven">
+      <option value="p">Tierra y planetas</option>
+      <option value="l">+ Luna (vista desde la Tierra)</option>
+    </select>
+    <span class="grow"></span>
+    <div class="seg" role="group" aria-label="Líneas del centro">
+      <button type="button" data-mode="t" aria-pressed="true" title="Tránsitos a tu carta">Tránsitos</button><button type="button" data-mode="n" aria-pressed="false" title="Aspectos natales">Natal</button>
+    </div>
+  </nav>
+  <figure class="wheel">
+    <svg id="wheel" viewBox="0 0 1000 1000" role="img" aria-label="Rueda heliocéntrica natal con los tránsitos de la fecha elegida"></svg>
+  </figure>
+  <p class="legend">
+    <span><span class="gl">⊕&#xFE0E;</span> dentro: natal</span>
+    <span style="color:var(--transit)"><span class="gl">⊕&#xFE0E;</span> fuera: la fecha</span>
+    <span><i class="sw" style="background:var(--tens)"></i>tensos</span>
+    <span><i class="sw" style="background:var(--harm)"></i>armónicos</span>
+    <span><i class="sw" style="background:var(--conj)"></i>conjunción</span>
+  </p>
+  <details class="more" id="more">
+    <summary>Tránsitos activos (<span id="aspCount">0</span>) y posiciones</summary>
+    <ul id="aspList" class="asp"></ul>
+    <table class="pos"><thead><tr><th></th><th>Natal</th><th>En la fecha</th></tr></thead><tbody id="posBody"></tbody></table>
+    <p class="note">Heliocéntrica: posiciones vistas desde el Sol, en el zodíaco tropical. No hay ascendente ni casas, así que la rueda empieza en 0° Aries (a la izquierda). La Tierra va siempre frente al Sol de la carta geocéntrica; cuando la Tierra en tránsito vuelve a su lugar natal es tu cumpleaños solar.</p>
+  </details>
+</main>
+<script src="https://cdn.jsdelivr.net/npm/astronomy-engine@2.1.19/astronomy.browser.min.js"></script>
+<script src="carta-core.js"></script>
+<script>
+// Carta heliocéntrica: Tierra y planetas vistos desde el Sol (longitud eclíptica tropical de la fecha).
+// Solo hace falta la fecha y la hora de nacimiento (el lugar no cambia nada, pero el enlace es el mismo de las otras cartas).
+(function () {
+  const VS = '︎';
+  const $ = id => document.getElementById(id);
+  const BIRTH = window.CartaBirth && CartaBirth.get();
+  if (!BIRTH) { if (window.CartaBirth) CartaBirth.showSetup(document.querySelector('main')); return; }
+  if (!window.Astronomy || !window.AstroCore) {
+    document.querySelector('main').innerHTML = '<p class="err">No se ha podido cargar la librería de cálculo astronómico. Comprueba la conexión y vuelve a abrir la página.</p>';
+    return;
+  }
+  const A = window.Astronomy, norm = window.AstroCore.norm;
+  const PL = {
+    earth: ['Tierra', '⊕'], mercury: ['Mercurio', '☿'], venus: ['Venus', '♀'], mars: ['Marte', '♂'],
+    jupiter: ['Júpiter', '♃'], saturn: ['Saturno', '♄'], uranus: ['Urano', '♅'], neptune: ['Neptuno', '♆'],
+    pluto: ['Plutón', '♇'], moon: ['Luna', '☽']
+  };
+  const BODY = { earth: 'Earth', mercury: 'Mercury', venus: 'Venus', mars: 'Mars', jupiter: 'Jupiter', saturn: 'Saturn', uranus: 'Uranus', neptune: 'Neptune', pluto: 'Pluto' };
+  const ORDER = ['earth', 'mercury', 'venus', 'mars', 'jupiter', 'saturn', 'uranus', 'neptune', 'pluto'];
+  const SLOW = new Set(['jupiter', 'saturn', 'uranus', 'neptune', 'pluto']);
+  let pts = (() => { try { const v = localStorage.getItem('carta-helio-puntos'); if (v === 'p' || v === 'l') return v; } catch (e) {} return 'p'; })();
+  const shownKeys = () => pts === 'l' ? [...ORDER, 'moon'] : ORDER;
+  const SIGNS = [
+    ['Aries', '♈', 'fire'], ['Tauro', '♉', 'earth'], ['Géminis', '♊', 'air'], ['Cáncer', '♋', 'water'],
+    ['Leo', '♌', 'fire'], ['Virgo', '♍', 'earth'], ['Libra', '♎', 'air'], ['Escorpio', '♏', 'water'],
+    ['Sagitario', '♐', 'fire'], ['Capricornio', '♑', 'earth'], ['Acuario', '♒', 'air'], ['Piscis', '♓', 'water']
+  ];
+  const ASPECTS = [
+    { a: 0, n: 'conjunción', g: '☌', k: 'conj', tOrb: 3, nOrb: 8 },
+    { a: 60, n: 'sextil', g: '⚹', k: 'harm', tOrb: 2, nOrb: 6 },
+    { a: 90, n: 'cuadratura', g: '□', k: 'tens', tOrb: 3, nOrb: 8 },
+    { a: 120, n: 'trígono', g: '△', k: 'harm', tOrb: 3, nOrb: 8 },
+    { a: 180, n: 'oposición', g: '☍', k: 'tens', tOrb: 3, nOrb: 8 }
+  ];
+  const COLOR = { conj: 'var(--conj)', harm: 'var(--harm)', tens: 'var(--tens)' };
+
+  function lonOf(key, date) {
+    if (key === 'moon') return norm(A.EclipticGeoMoon(date).lon);
+    return norm(A.Ecliptic(A.HelioVector(BODY[key], date)).elon);
+  }
+  function positions(date) {
+    const out = {}, later = new Date(date.getTime() + 6 * 3600 * 1000);
+    for (const k of [...ORDER, 'moon']) {
+      const lon = lonOf(k, date); let sp = lonOf(k, later) - lon;
+      if (sp > 180) sp -= 360; if (sp < -180) sp += 360;
+      out[k] = { lon, speed: sp * 4 };
+    }
+    return out;
+  }
+  const natal = positions(BIRTH.date);
+  const signOf = lon => SIGNS[Math.floor(norm(lon) / 30)];
+  function dm(lon) {
+    const x = norm(lon) % 30; let d = Math.floor(x), m = Math.round((x - d) * 60);
+    if (m === 60) { d += 1; m = 0; }
+    return { d, m, txt: `${d}°${String(m).padStart(2, '0')}′` };
+  }
+  const orbTxt = o => { const d = Math.floor(o), m = Math.round((o - d) * 60); return m === 60 ? `${d + 1}°00′` : `${d}°${String(m).padStart(2, '0')}′`; };
+  const glyph = k => PL[k][1] + VS, sGlyph = s => s[1] + VS;
+  const sep = (a, b) => { const d = norm(a - b); return d > 180 ? 360 - d : d; };
+
+  function transitAspects(tr) {
+    const out = [], keys = shownKeys();
+    for (const tk of keys) {
+      const t = tr[tk];
+      for (const nk of keys) {
+        const n = natal[nk].lon, s = sep(t.lon, n);
+        for (const AS of ASPECTS) {
+          const orb = Math.abs(s - AS.a);
+          if (orb <= AS.tOrb) out.push({ tk, nk, A: AS, orb, applying: Math.abs(sep(t.lon + t.speed * 0.25, n) - AS.a) < orb, tLon: t.lon, nLon: n });
+        }
+      }
+    }
+    return out.sort((x, y) => x.orb - y.orb);
+  }
+  function natalAspects() {
+    const out = [], keys = shownKeys();
+    for (let i = 0; i < keys.length; i++) for (let j = i + 1; j < keys.length; j++) {
+      const a = natal[keys[i]].lon, b = natal[keys[j]].lon, s = sep(a, b);
+      for (const AS of ASPECTS) { const orb = Math.abs(s - AS.a); if (orb <= AS.nOrb) out.push({ A: AS, orb, aLon: a, bLon: b }); }
+    }
+    return out;
+  }
+
+  // ---------- rueda: 0° Aries a la izquierda, sin casas ----------
+  const CX = 500, CY = 500, ASC = 0;
+  const R = { out: 492, zOut: 402, zIn: 346, hIn: 330, asp: 214 };
+  const D2R = Math.PI / 180;
+  const pt = (lon, r) => { const f = (lon - ASC) * D2R; return [CX - r * Math.cos(f), CY + r * Math.sin(f)]; };
+  const f1 = n => n.toFixed(1);
+  const line = (l1, r1, l2, r2, cls, extra = '') => { const [x1, y1] = pt(l1, r1), [x2, y2] = pt(l2, r2); return `<line x1="${f1(x1)}" y1="${f1(y1)}" x2="${f1(x2)}" y2="${f1(y2)}" class="${cls}" ${extra}/>`; };
+  const text = (lon, r, s, cls, extra = '') => { const [x, y] = pt(lon, r); return `<text x="${f1(x)}" y="${f1(y)}" class="${cls}" text-anchor="middle" dominant-baseline="central" ${extra}>${s}</text>`; };
+  function sector(a, b, r1, r2, fill) {
+    const [x1, y1] = pt(a, r2), [x2, y2] = pt(b, r2), [x3, y3] = pt(b, r1), [x4, y4] = pt(a, r1);
+    return `<path d="M${f1(x1)} ${f1(y1)} A${r2} ${r2} 0 0 0 ${f1(x2)} ${f1(y2)} L${f1(x3)} ${f1(y3)} A${r1} ${r1} 0 0 1 ${f1(x4)} ${f1(y4)} Z" fill="${fill}" class="z-ring"/>`;
+  }
+  function spread(items, minSep) {
+    const arr = items.map(o => ({ ...o, disp: o.lon, w: minSep })).sort((a, b) => a.lon - b.lon);
+    const n = arr.length; if (n < 2) return arr;
+    let cut = 0, big = -1;
+    for (let i = 0; i < n; i++) { const g = norm(arr[(i + 1) % n].lon - arr[i].lon); if (g > big) { big = g; cut = (i + 1) % n; } }
+    const lin = [...arr.slice(cut), ...arr.slice(0, cut)], x0 = lin[0].lon;
+    lin.forEach(o => { o.x = norm(o.lon - x0); });
+    let groups = lin.map(o => [o]);
+    const place = g => {
+      const off = [0]; for (let i = 1; i < g.length; i++) off.push(off[i - 1] + (g[i - 1].w + g[i].w) / 2);
+      const shift = g.reduce((s, o, i) => s + o.x - off[i], 0) / g.length;
+      g.forEach((o, i) => { o.p = shift + off[i]; });
+    };
+    groups.forEach(place);
+    for (let guard = 0; guard < n * 2; guard++) {
+      let merged = false;
+      for (let i = 0; i + 1 < groups.length; i++) {
+        const a = groups[i][groups[i].length - 1], b = groups[i + 1][0];
+        if (b.p - a.p < (a.w + b.w) / 2 - 1e-9) { groups.splice(i, 2, [...groups[i], ...groups[i + 1]]); place(groups[i]); merged = true; break; }
+      }
+      if (!merged) break;
+    }
+    lin.forEach(o => { o.disp = norm(o.p + x0); });
+    return lin;
+  }
+  function drawWheel(tr, tAsps, mode) {
+    const wheel = $('wheel'); if (!wheel) return;
+    let s = `<circle cx="${CX}" cy="${CY}" r="${R.out}" class="ring" fill="var(--surface)"/>`;
+    SIGNS.forEach((sg, i) => { s += sector(i * 30, i * 30 + 30, R.zIn, R.zOut, `var(--${sg[2]})`); });
+    for (let d = 0; d < 360; d++) { const len = d % 10 === 0 ? 12 : d % 5 === 0 ? 8 : 4; s += line(d, R.zIn, d, R.zIn + len, 'tick'); }
+    SIGNS.forEach((sg, i) => { s += text(i * 30 + 15, (R.zIn + R.zOut) / 2 + 4, sGlyph(sg), 's-sign', `aria-label="${sg[0]}"`); });
+    s += `<circle cx="${CX}" cy="${CY}" r="${R.zOut}" class="ring-strong"/><circle cx="${CX}" cy="${CY}" r="${R.zIn}" class="ring-strong"/>`;
+    s += `<circle cx="${CX}" cy="${CY}" r="${R.asp}" class="ring inner"/>`;
+    for (let i = 0; i < 12; i++) s += line(i * 30, R.asp, i * 30, R.zIn, 'cusp');
+    if (mode === 't') {
+      for (const x of tAsps) {
+        const col = COLOR[x.A.k], w = (1 + 2.2 * (1 - x.orb / x.A.tOrb)).toFixed(2);
+        if (x.A.a === 0) { const [cx, cy] = pt(x.nLon, R.asp); s += `<circle cx="${f1(cx)}" cy="${f1(cy)}" r="9" fill="none" stroke="${col}" stroke-width="${w}"/>`; }
+        else s += line(x.tLon, R.asp, x.nLon, R.asp, 'aspline', `stroke="${col}" stroke-width="${w}" opacity=".85"`);
+      }
+    } else {
+      for (const x of natalAspects()) {
+        if (x.A.a === 0) continue;
+        s += line(x.aLon, R.asp, x.bLon, R.asp, 'aspline', `stroke="${COLOR[x.A.k]}" stroke-width="${(0.8 + 1.6 * (1 - x.orb / x.A.nOrb)).toFixed(2)}" opacity=".8"`);
+      }
+    }
+    const keys = shownKeys();
+    for (const it of spread(keys.map(k => ({ k, lon: natal[k].lon })), 8.2)) {
+      s += line(it.lon, R.zIn, it.lon, R.zIn - 9, 'tick');
+      if (Math.abs(norm(it.disp - it.lon + 180) - 180) > 0.4) s += line(it.lon, R.zIn - 9, it.disp, R.zIn - 16, 'lead');
+      s += text(it.disp, R.zIn - 42, glyph(it.k), 's-natal', `aria-label="${PL[it.k][0]} natal"`);
+      s += text(it.disp, R.zIn - 76, `${dm(it.lon).d}°`, 's-deg');
+      const [x, y] = pt(it.lon, R.asp); s += `<circle cx="${f1(x)}" cy="${f1(y)}" r="3.2" class="dot-n"/>`;
+    }
+    for (const it of spread(keys.map(k => ({ k, lon: tr[k].lon })), 7.4)) {
+      s += line(it.lon, R.zOut, it.lon, R.zOut + 10, 'lead-t');
+      if (Math.abs(norm(it.disp - it.lon + 180) - 180) > 0.4) s += line(it.lon, R.zOut + 10, it.disp, R.zOut + 18, 'lead-t');
+      s += text(it.disp, R.zOut + 38, glyph(it.k), 's-transit', `aria-label="${PL[it.k][0]} en tránsito"`);
+      s += text(it.disp, R.zOut + 70, `${dm(it.lon).d}°`, 's-degt');
+      const [x, y] = pt(it.lon, R.asp); s += `<circle cx="${f1(x)}" cy="${f1(y)}" r="3.6" class="dot-t"/>`;
+    }
+    wheel.innerHTML = `<title>Rueda heliocéntrica natal con los tránsitos de la fecha elegida</title>` + s;
+  }
+  function renderList(tr, asps) {
+    const ul = $('aspList'); $('aspCount').textContent = asps.length;
+    if (!asps.length) { ul.innerHTML = '<li class="empty">No hay tránsitos dentro del orbe en esta fecha.</li>'; return; }
+    ul.innerHTML = asps.map(x => {
+      const t = tr[x.tk], ts = signOf(t.lon), slow = SLOW.has(x.tk);
+      return `<li style="--c:${COLOR[x.A.k]}"><div class="line"><span class="t"><span class="gl">${glyph(x.tk)}</span> ${PL[x.tk][0]}</span>
+        <span class="a"><span class="gl">${x.A.g}${VS}</span> ${x.A.n}</span><span class="n"><span class="gl">${glyph(x.nk)}</span> ${PL[x.nk][0]} natal</span></div>
+        <div class="meta">${orbTxt(x.orb)} · ${x.applying ? 'se acerca' : 'se aleja'} · en ${ts[0]} ${dm(t.lon).txt}${slow ? ' · lento' : ''}</div></li>`;
+    }).join('');
+  }
+  function renderTable(tr) {
+    $('posBody').innerHTML = shownKeys().map(k => {
+      const n = natal[k], ns = signOf(n.lon), t = tr[k], ts = signOf(t.lon);
+      return `<tr><th scope="row"><span class="gl">${glyph(k)}</span> ${PL[k][0]}</th><td><span class="gl">${sGlyph(ns)}</span> ${ns[0]} ${dm(n.lon).txt}</td><td><span class="gl">${sGlyph(ts)}</span> ${ts[0]} ${dm(t.lon).txt}</td></tr>`;
+    }).join('');
+  }
+
+  const input = $('when');
+  let when = new Date(), mode = 't', unit = 'd';
+  const pad = n => String(n).padStart(2, '0');
+  const toLocalInput = d => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  function update() {
+    const tr = positions(when), asps = transitAspects(tr);
+    drawWheel(tr, asps, mode); renderList(tr, asps); renderTable(tr);
+    input.value = toLocalInput(when);
+  }
+  input.addEventListener('change', () => { if (input.value) { const d = new Date(input.value); if (!isNaN(d)) { when = d; update(); } } });
+  document.querySelectorAll('[data-step]').forEach(b => b.addEventListener('click', () => {
+    const n = +b.dataset.step, d = new Date(when);
+    if (unit === 'd') d.setDate(d.getDate() + n); else if (unit === 'm') d.setMonth(d.getMonth() + n); else d.setFullYear(d.getFullYear() + n);
+    when = d; update();
+  }));
+  document.querySelectorAll('[data-unit]').forEach(b => b.addEventListener('click', () => {
+    unit = b.dataset.unit; document.querySelectorAll('[data-unit]').forEach(x => x.setAttribute('aria-pressed', x === b));
+  }));
+  document.querySelectorAll('[data-mode]').forEach(b => b.addEventListener('click', () => {
+    mode = b.dataset.mode; document.querySelectorAll('[data-mode]').forEach(x => x.setAttribute('aria-pressed', x === b)); update();
+  }));
+  $('now').addEventListener('click', () => { when = new Date(); update(); });
+  const ptsSel = $('pts'); ptsSel.value = pts;
+  ptsSel.addEventListener('change', () => { pts = ptsSel.value; try { localStorage.setItem('carta-helio-puntos', pts); } catch (e) {} update(); });
+  update();
+})();
+</script>
+</body></html>
