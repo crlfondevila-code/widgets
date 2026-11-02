@@ -1,0 +1,634 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Oráculo de runas</title>
+<style>
+:root{
+  --bg:#ece5d8; --bg2:#e3dacb; --ink:#2a241d; --muted:#6b6053; --line:#cbbfab;
+  --accent:#8a5a2b; --accent-ink:#fff8ee; --card:#f6f1e7;
+  --wood1:#c9a77c; --wood2:#b99467; --wood-line:rgba(90,60,30,.12);
+  --stone1:#d9d4cb; --stone2:#a9a399; --stone3:#8a857c; --stone-edge:rgba(40,35,30,.35);
+  --cut:#3b342c; --cut-hl:rgba(255,255,255,.7);
+  --back1:#7d6a55; --back2:#5c4c3c;
+  --shadow:0 2px 6px rgba(40,30,20,.25);
+  --focus:#b06d2c;
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#181512; --bg2:#211d18; --ink:#ece4d6; --muted:#a99c89; --line:#3b342c;
+    --accent:#c9925a; --accent-ink:#1b1510; --card:#221e19;
+    --wood1:#3a2c1f; --wood2:#2f2318; --wood-line:rgba(0,0,0,.25);
+    --stone1:#8f8a82; --stone2:#69645c; --stone3:#4e4a44; --stone-edge:rgba(0,0,0,.55);
+    --cut:#1a1714; --cut-hl:rgba(255,255,255,.28);
+    --back1:#4a3d30; --back2:#2f261d;
+    --shadow:0 2px 8px rgba(0,0,0,.6);
+    --focus:#e0a061;
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#181512; --bg2:#211d18; --ink:#ece4d6; --muted:#a99c89; --line:#3b342c;
+  --accent:#c9925a; --accent-ink:#1b1510; --card:#221e19;
+  --wood1:#3a2c1f; --wood2:#2f2318; --wood-line:rgba(0,0,0,.25);
+  --stone1:#8f8a82; --stone2:#69645c; --stone3:#4e4a44; --stone-edge:rgba(0,0,0,.55);
+  --cut:#1a1714; --cut-hl:rgba(255,255,255,.28);
+  --back1:#4a3d30; --back2:#2f261d;
+  --shadow:0 2px 8px rgba(0,0,0,.6);
+  --focus:#e0a061;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{
+  background:var(--bg); color:var(--ink);
+  font-family:"Iowan Old Style","Palatino Linotype",Palatino,"Book Antiqua",Georgia,serif;
+  font-size:16px; line-height:1.5; -webkit-text-size-adjust:100%;
+}
+.wrap{max-width:900px;margin:0 auto;padding:16px}
+header{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:12px}
+h1{font-size:1.35rem;margin:0;font-weight:600;letter-spacing:.02em}
+.sub{margin:2px 0 0;color:var(--muted);font-size:.9rem}
+.runic{font-family:"Segoe UI Historic","Noto Sans Runic","BabelStone Runic","Junicode",serif}
+button{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
+.theme-btn{flex:none;background:var(--card);border:1px solid var(--line);border-radius:999px;padding:4px 12px;font-size:.85rem;cursor:pointer;color:var(--muted)}
+.tabs{display:flex;gap:6px;overflow-x:auto;padding-bottom:4px;margin:0 0 12px;scrollbar-width:thin}
+.tab{flex:none;background:transparent;border:1px solid var(--line);border-radius:999px;padding:6px 14px;cursor:pointer;color:var(--muted);font-size:.92rem;white-space:nowrap}
+.tab[aria-selected="true"]{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.opts{display:flex;flex-wrap:wrap;gap:8px 18px;align-items:center;background:var(--card);border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin-bottom:12px;font-size:.9rem}
+.opts label{display:flex;align-items:center;gap:6px;cursor:pointer}
+.opts input{accent-color:var(--accent);width:16px;height:16px}
+.opts .note{color:var(--muted);font-size:.8rem;flex-basis:100%;margin:0}
+.panel{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px}
+.panel h2{font-size:1.1rem;margin:0 0 4px}
+.desc{margin:0 0 10px;color:var(--muted);font-size:.9rem}
+.actions{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:12px}
+.draw-btn{background:var(--accent);color:var(--accent-ink);border:0;border-radius:8px;padding:9px 18px;cursor:pointer;font-weight:600;letter-spacing:.02em;box-shadow:var(--shadow)}
+.draw-btn:disabled{opacity:.6;cursor:wait}
+.actions select{font:inherit;background:var(--bg);color:var(--ink);border:1px solid var(--line);border-radius:6px;padding:5px 8px}
+/* tablero de madera */
+.board{
+  position:relative;border-radius:10px;padding:18px 10px;min-height:150px;
+  background:
+    repeating-linear-gradient(92deg,var(--wood-line) 0 2px,transparent 2px 9px,var(--wood-line) 9px 10px,transparent 10px 23px),
+    linear-gradient(180deg,var(--wood1),var(--wood2));
+  box-shadow:inset 0 0 0 1px var(--stone-edge),inset 0 6px 18px rgba(0,0,0,.18);
+  display:flex;justify-content:center;align-items:center;flex-wrap:wrap;gap:14px;
+}
+.board.empty::after{content:"Concéntrate en tu pregunta y pulsa «Mezclar y sacar».";color:var(--ink);opacity:.7;font-style:italic;text-align:center;padding:0 12px;font-size:.92rem}
+.slot{display:flex;flex-direction:column;align-items:center;gap:6px;max-width:110px;text-align:center}
+.slot .lab{font-size:.78rem;line-height:1.25;color:var(--ink);background:color-mix(in srgb,var(--card) 80%,transparent);padding:2px 6px;border-radius:6px}
+/* cruz */
+.board.cross{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));grid-template-areas:". t ." "l c r" ". b .";gap:10px;justify-items:center}
+.a-t{grid-area:t}.a-l{grid-area:l}.a-c{grid-area:c}.a-r{grid-area:r}.a-b{grid-area:b}
+/* nueve */
+.board.nine{display:block;padding:0;aspect-ratio:1/1;max-width:520px;margin:0 auto;border-radius:50%;min-height:0}
+.ring{position:absolute;border:1px dashed color-mix(in srgb,var(--ink) 30%,transparent);border-radius:50%;pointer-events:none}
+.ring.r1{inset:30%}.ring.r2{inset:12.5%}
+.nine .tile{position:absolute;width:15%;height:auto;aspect-ratio:64/88;transform:translate(-50%,-50%) rotate(var(--rot,0deg))}
+.nine .slot{position:absolute;transform:translate(-50%,-50%)}
+/* fichas de piedra */
+.tile{
+  width:64px;height:88px;padding:0;border:0;background:transparent;cursor:pointer;perspective:600px;
+  -webkit-tap-highlight-color:transparent;
+}
+.tile.big{width:96px;height:132px}
+.tile .inner{position:relative;display:block;width:100%;height:100%;transition:transform .7s cubic-bezier(.3,.7,.3,1);transform-style:preserve-3d}
+.tile.shown .inner{transform:rotateY(180deg)}
+.face{position:absolute;inset:0;backface-visibility:hidden;-webkit-backface-visibility:hidden;border-radius:44% 48% 42% 46% / 30% 32% 28% 30%;box-shadow:var(--shadow),inset 0 0 0 1px var(--stone-edge)}
+.face.back{background:radial-gradient(circle at 35% 28%,var(--back1),var(--back2) 75%)}
+.face.back::after{content:"";position:absolute;inset:22% 30%;border-radius:50%;border:1px solid rgba(255,255,255,.12)}
+.face.front{
+  transform:rotateY(180deg);
+  background:
+    radial-gradient(circle at 30% 22%,rgba(255,255,255,.35),transparent 40%),
+    radial-gradient(circle at 70% 80%,rgba(0,0,0,.18),transparent 45%),
+    radial-gradient(circle at 50% 50%,var(--stone1),var(--stone2) 70%,var(--stone3));
+  display:flex;align-items:center;justify-content:center;
+}
+.face.front svg{width:62%;height:auto;overflow:visible;transition:transform .3s}
+.tile.rev .face.front svg{transform:rotate(180deg)}
+.rp{fill:none;stroke-linecap:round;stroke-linejoin:round}
+.rp.hl{stroke:var(--cut-hl);stroke-width:5;transform:translate(.9px,1.1px)}
+.rp.cut{stroke:var(--cut);stroke-width:4.2}
+.tile.down{cursor:default}
+.tile.down .face.back{background:radial-gradient(circle at 35% 28%,var(--back2),#000 140%);opacity:.85}
+.tile:hover .face.front{filter:brightness(1.05)}
+.tile.sel .face{box-shadow:0 0 0 3px var(--accent),var(--shadow)}
+/* lectura */
+.reading{margin-top:14px}
+.reading h3{font-size:1rem;margin:0 0 6px}
+.reading ol{list-style:none;margin:0;padding:0;display:grid;gap:8px}
+.reading li{border:1px solid var(--line);border-radius:8px;padding:8px 10px;background:var(--bg);cursor:pointer}
+.reading li:hover{border-color:var(--accent)}
+.reading .pos{font-size:.78rem;color:var(--accent);text-transform:uppercase;letter-spacing:.05em}
+.reading .nm{font-weight:600}
+.reading .kw{color:var(--muted);font-size:.85rem}
+.reading p{margin:4px 0 0;font-size:.92rem}
+.reading .msg{color:var(--muted);font-style:italic;font-size:.92rem}
+.explain{margin-top:12px;font-size:.84rem;color:var(--muted);border-top:1px solid var(--line);padding-top:10px}
+.explain p{margin:0 0 6px}
+/* ficha */
+.overlay{position:fixed;inset:0;background:rgba(10,8,6,.55);display:flex;align-items:flex-start;justify-content:center;padding:16px;overflow-y:auto;z-index:20}
+.overlay[hidden]{display:none}
+.ficha{background:var(--card);color:var(--ink);border:1px solid var(--line);border-radius:12px;max-width:560px;width:100%;padding:16px;margin:auto 0;box-shadow:0 10px 40px rgba(0,0,0,.4);position:relative}
+.ficha .close{position:absolute;top:8px;right:8px;background:transparent;border:1px solid var(--line);border-radius:999px;width:32px;height:32px;cursor:pointer;font-size:1.1rem;line-height:1}
+.ficha .head{display:flex;gap:14px;align-items:center;margin-bottom:8px;padding-right:34px}
+.ficha .head .tile{cursor:default;flex:none}
+.ficha h2{margin:0;font-size:1.3rem}
+.ficha .uni{font-size:1.4rem;margin-left:6px;color:var(--muted)}
+.ficha dl{display:grid;grid-template-columns:auto 1fr;gap:2px 10px;margin:0;font-size:.88rem}
+.ficha dt{color:var(--muted)}
+.ficha dd{margin:0}
+.ficha h3{font-size:.85rem;text-transform:uppercase;letter-spacing:.06em;color:var(--accent);margin:12px 0 2px}
+.ficha p{margin:0;font-size:.95rem}
+.ficha .cur{border-left:3px solid var(--accent);padding-left:8px}
+.badge{display:inline-block;font-size:.75rem;border:1px solid var(--accent);color:var(--accent);border-radius:999px;padding:0 8px;margin-left:6px;vertical-align:middle}
+footer{margin:16px 0 4px;text-align:center;color:var(--muted);font-size:.8rem;font-style:italic}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+@media (max-width:420px){
+  .tile{width:52px;height:72px}
+  .tile.big{width:84px;height:116px}
+  .board{gap:10px;padding:14px 6px}
+  .slot{max-width:90px}
+  .slot .lab{font-size:.72rem}
+}
+@media (prefers-reduced-motion: reduce){
+  .tile .inner,.face.front svg{transition:none}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <h1>Oráculo de runas <span class="runic" aria-hidden="true">ᚠᚢᚦᚨᚱᚲ</span></h1>
+      <p class="sub">Futhark antiguo · veinticuatro runas en tres ættir</p>
+    </div>
+    <button type="button" class="theme-btn" id="themeBtn" aria-label="Cambiar entre tema claro y oscuro">Tema</button>
+  </header>
+
+  <div class="tabs" role="tablist" aria-label="Tiradas" id="tabs"></div>
+
+  <div class="opts">
+    <label><input type="checkbox" id="optRev" checked> Permitir invertidas (merkstave)</label>
+    <label><input type="checkbox" id="optBlank"> Incluir runa en blanco (Wyrd)</label>
+    <p class="note">Las runas que se ven iguales al girarlas (Gebo, Hagalaz, Naudhiz, Isa, Jera, Eihwaz, Sowilo, Ingwaz y Dagaz) nunca salen invertidas. La runa en blanco es un añadido moderno (Ralph Blum, 1982), no aparece en las fuentes antiguas.</p>
+  </div>
+
+  <section class="panel" id="panel" role="tabpanel">
+    <h2 id="castTitle"></h2>
+    <p class="desc" id="castDesc"></p>
+    <div class="actions">
+      <button type="button" class="draw-btn" id="drawBtn">Mezclar y sacar</button>
+      <label id="freeWrap" hidden>Número de runas
+        <select id="freeN"></select>
+      </label>
+    </div>
+    <div class="board empty" id="board" aria-live="polite"></div>
+    <div class="reading" id="reading"></div>
+    <div class="explain" id="explain"></div>
+  </section>
+
+  <footer>Significados resumidos por Serapis a partir de la tradición del Futhark antiguo y los poemas rúnicos.</footer>
+</div>
+
+<div class="overlay" id="overlay" hidden>
+  <div class="ficha" role="dialog" aria-modal="true" aria-labelledby="fichaName" id="ficha"></div>
+</div>
+
+<script>
+(function(){
+'use strict';
+
+var AETTS = ['Ætt de Freyr','Ætt de Hagal','Ætt de Tyr'];
+
+/* Trazos: viewBox 0 0 40 60, solo líneas rectas */
+var RUNES = [
+ /* ---- Ætt de Freyr ---- */
+ {id:'fehu', name:'Fehu', glyph:'ᚠ', sound:'f', aett:0, literal:'ganado, riqueza móvil', symmetric:false,
+  path:'M14 6V54M14 24L30 10M14 36L30 22',
+  keywords:['abundancia','ganancia','energía que circula'],
+  upright:'Riqueza que se mueve: lo que has ganado o cuidado, y la energía para seguir generándolo. El bien conserva su valor solo si circula y se comparte.',
+  reversed:'Pérdida, gasto que se escapa o apego excesivo a lo que se tiene. Conviene revisar qué retienes por miedo.',
+  myth:'Ligada a Freyr y a los Vanir, dioses de la abundancia. El poema rúnico anglosajón aconseja repartir la riqueza; los poemas noruego e islandés la ven como fuente de discordia entre parientes.'},
+ {id:'uruz', name:'Uruz', glyph:'ᚢ', sound:'u', aett:0, literal:'uro (toro salvaje)', symmetric:false,
+  path:'M12 54V6L28 20V54',
+  keywords:['fuerza vital','salud','resistencia'],
+  upright:'Vigor indómito, como el del uro, el gran bóvido salvaje hoy extinguido. Habla de salud, aguante y de una fuerza que nace del cuerpo y de la tierra.',
+  reversed:'Fuerza debilitada o mal dirigida: cansancio, impulsos que se desbordan u ocasión perdida por falta de empuje.',
+  myth:'El poema anglosajón pinta al uro como bestia fiera de grandes cuernos que recorre los páramos; evoca a Audhumla, la vaca primordial. En los poemas noruego e islandés, «úr» significa escoria o llovizna.'},
+ {id:'thurisaz', name:'Thurisaz', glyph:'ᚦ', sound:'þ (th)', aett:0, literal:'gigante (þurs); espina', symmetric:false,
+  path:'M14 6V54M14 18L28 30L14 42',
+  keywords:['umbral','defensa','fuerza reactiva'],
+  upright:'Fuerza que defiende y reacciona, como la espina que guarda la rosa o el martillo que contiene el caos. Marca un umbral: conviene detenerse antes de cruzarlo.',
+  reversed:'Impulsividad, conflicto o daño que se vuelve contra uno mismo. Algo hiriente que todavía no se ha mirado de frente.',
+  myth:'El þurs es el gigante, fuerza del caos primordial; Thor, que los combate, es su contrapeso. El poema anglosajón la lee como espina, áspera para quien la agarra.'},
+ {id:'ansuz', name:'Ansuz', glyph:'ᚨ', sound:'a', aett:0, literal:'un dios (ás); boca', symmetric:false,
+  path:'M14 6V54M14 8L28 20M14 22L28 34',
+  keywords:['palabra','inspiración','mensaje'],
+  upright:'La palabra, la inspiración y el mensaje: la voz que llega de dentro o de un maestro. Momento de escuchar, aprender y decir lo verdadero.',
+  reversed:'Malentendidos, engaño o consejo mal recibido. Desconfía de las palabras vacías, también de las propias.',
+  myth:'Ás designa a un dios de los Æsir y la tradición la asocia a Odín, señor de la palabra, que obtuvo las runas colgado nueve noches del árbol (Hávamál). El poema anglosajón la llama boca, origen del habla.'},
+ {id:'raidho', name:'Raidho', glyph:'ᚱ', sound:'r', aett:0, literal:'cabalgada, viaje', symmetric:false,
+  path:'M12 54V6L28 18L12 30L28 54',
+  keywords:['viaje','ritmo','orden justo'],
+  upright:'Viaje y camino recto, sea un desplazamiento o un proceso interior que sigue su orden. Pide moverse con dirección y en el momento oportuno.',
+  reversed:'Retraso, desvío o viaje sin rumbo. Algo se ha salido de su ritmo.',
+  myth:'Los poemas contrastan lo fácil que es hablar de cabalgar bajo techo con la dureza real del camino. Evoca la rueda solar y a Sleipnir, el caballo de ocho patas de Odín.'},
+ {id:'kenaz', name:'Kenaz', glyph:'ᚲ', sound:'k', aett:0, literal:'antorcha; llaga (en nórdico)', symmetric:false,
+  path:'M28 16L12 30L28 44',
+  keywords:['claridad','conocimiento','fuego creador'],
+  upright:'La antorcha: claridad, conocimiento y el fuego del artesano que transforma la materia. Lo que estaba en penumbra se ilumina y puede trabajarse.',
+  reversed:'Falta de claridad, bloqueo creativo o algo que se apaga. También una herida que pide atención.',
+  myth:'En el poema anglosajón es la antorcha que arde donde descansan los nobles; en los nórdicos, «kaun» es una llaga. El fuego de doble filo: forja y quema.'},
+ {id:'gebo', name:'Gebo', glyph:'ᚷ', sound:'g', aett:0, literal:'regalo, don', symmetric:true,
+  path:'M10 10L30 50M30 10L10 50',
+  keywords:['don','reciprocidad','alianza'],
+  upright:'El don y el intercambio: todo vínculo vive del dar y recibir en equilibrio. Habla de alianza, compromiso y generosidad.',
+  reversed:null,
+  myth:'El Hávamál insiste en que un regalo pide otro regalo: sobre esa reciprocidad se sostenían los lazos. El poema anglosajón ve en el don honra para quien da y sustento para quien no tiene nada.'},
+ {id:'wunjo', name:'Wunjo', glyph:'ᚹ', sound:'w', aett:0, literal:'alegría', symmetric:false,
+  path:'M14 6V54M14 6L28 18L14 30',
+  keywords:['alegría','armonía','pertenencia'],
+  upright:'Alegría, armonía y sentido de pertenencia: el bienestar de quien comparte un propósito. Algo encaja y hay paz en el grupo.',
+  reversed:'Tristeza, aislamiento o discordia. La alegría está cerca, pero algo impide sentirla.',
+  myth:'El poema anglosajón la describe como el gozo de quien conoce poco dolor y tiene bienestar y casa suficiente. Se ha relacionado con el estandarte que reúne a la tribu.'},
+ /* ---- Ætt de Hagal ---- */
+ {id:'hagalaz', name:'Hagalaz', glyph:'ᚺ', sound:'h', aett:1, literal:'granizo', symmetric:true,
+  path:'M12 6V54M28 6V54M12 22L28 38',
+  keywords:['irrupción','crisis','transformación'],
+  upright:'Granizo: una irrupción que no se controla, una ruptura que llega de fuera. Como el granizo que se funde en agua, lo destructivo prepara una transformación.',
+  reversed:null,
+  myth:'El poema anglosajón la llama el más blanco de los granos, que cae del cielo y se vuelve agua. Abre el segundo ætt y remite al hielo de Niflheim en el origen del mundo.'},
+ {id:'naudhiz', name:'Naudhiz', glyph:'ᚾ', sound:'n', aett:1, literal:'necesidad', symmetric:true,
+  path:'M20 6V54M12 24L28 36',
+  keywords:['necesidad','límite','resistencia'],
+  upright:'Necesidad y carencia que obligan a crecer: la fricción que enciende el fuego. Pide paciencia, aceptar el límite y buscar lo esencial.',
+  reversed:null,
+  note:'Algunas escuelas modernas le asignan un sentido invertido, pero su forma es idéntica al girarla, por lo que aquí no se invierte.',
+  myth:'El poema anglosajón dice que la necesidad oprime el pecho, pero puede volverse ayuda si se atiende a tiempo. El Sigrdrífumál aconseja grabarla en la uña; se asocia al «fuego de necesidad» encendido por fricción.'},
+ {id:'isa', name:'Isa', glyph:'ᛁ', sound:'i', aett:1, literal:'hielo', symmetric:true,
+  path:'M20 6V54',
+  keywords:['quietud','pausa','concentración'],
+  upright:'Hielo: quietud, pausa y recogimiento en uno mismo. No es momento de forzar; lo congelado espera su deshielo.',
+  reversed:null,
+  myth:'El poema anglosajón habla del hielo frío y resbaladizo, brillante como el cristal, un suelo hecho de escarcha. En la cosmogonía nórdica, el hielo de Niflheim es uno de los dos polos de la creación.'},
+ {id:'jera', name:'Jera', glyph:'ᛃ', sound:'j', aett:1, literal:'año, cosecha', symmetric:true,
+  path:'M19 10L9 22L19 34M21 26L31 38L21 50',
+  keywords:['ciclo','cosecha','paciencia'],
+  upright:'El año y la cosecha: lo sembrado da fruto a su debido tiempo. Habla de ciclos, paciencia y recompensa justa.',
+  reversed:null,
+  myth:'El poema anglosajón la llama esperanza de los hombres cuando la tierra da sus frutos. Se vincula a Freyr, que trae la buena estación.'},
+ {id:'eihwaz', name:'Eihwaz', glyph:'ᛇ', sound:'ï / ei', aett:1, literal:'tejo', symmetric:true,
+  path:'M20 6V54M20 6L30 16M20 54L10 44',
+  keywords:['eje','resistencia','vida y muerte'],
+  upright:'El tejo, árbol longevo de madera firme: eje entre la vida y la muerte. Firmeza, resistencia y transformación profunda.',
+  reversed:null,
+  myth:'El poema anglosajón lo describe como árbol áspero, bien arraigado y guardián del fuego. Muchos autores lo asocian a Yggdrasil y al arco de tejo del dios Ull.'},
+ {id:'perthro', name:'Perthro', glyph:'ᛈ', sound:'p', aett:1, literal:'incierto (¿cubilete de suertes?)', symmetric:false,
+  path:'M12 6V54M12 6L24 16L32 8M12 54L24 44L32 52',
+  keywords:['misterio','azar','destino'],
+  upright:'Lo oculto, el azar y el destino: el cubilete donde se agitan las suertes. Invita a aceptar el misterio y a intuir lo que aún no se muestra.',
+  reversed:'Secretos que pesan, estancamiento o sensación de que la suerte se ha vuelto en contra.',
+  myth:'Su significado original es incierto. El poema anglosajón la asocia al juego y la risa en la sala de los guerreros, de ahí la lectura como cubilete de dados; se relaciona con las Nornas y el wyrd, el destino tejido.'},
+ {id:'algiz', name:'Algiz', glyph:'ᛉ', sound:'z (-R final)', aett:1, literal:'alce; juncia del alce', symmetric:false,
+  path:'M20 54V6M20 26L8 10M20 26L32 10',
+  keywords:['protección','instinto','amparo'],
+  upright:'Protección: la mano alzada, la cornamenta del alce, el instinto que avisa. Conexión con lo alto y amparo en lo que emprendes.',
+  reversed:'Vulnerabilidad, descuido o defensa excesiva. Revisa de qué te proteges y a qué precio.',
+  myth:'El poema anglosajón la llama juncia del alce, que crece en los pantanos y hiere a quien la agarra. Se ha relacionado con las valquirias y con los Alcis, gemelos divinos citados por Tácito.'},
+ {id:'sowilo', name:'Sowilo', glyph:'ᛊ', sound:'s', aett:1, literal:'sol', symmetric:true,
+  path:'M27 6L12 24L28 36L13 54',
+  keywords:['éxito','energía','voluntad'],
+  upright:'El sol: energía, éxito y claridad de una voluntad que alcanza su meta. Guía el camino como la luz al navegante.',
+  reversed:null,
+  myth:'Sól es la diosa que conduce el carro del sol. El poema anglosajón la ve como esperanza de los navegantes; el noruego, como luz de las tierras; el islandés, como escudo de las nubes.'},
+ /* ---- Ætt de Tyr ---- */
+ {id:'tiwaz', name:'Tiwaz', glyph:'ᛏ', sound:'t', aett:2, literal:'el dios Tyr', symmetric:false,
+  path:'M20 6V54M8 20L20 6L32 20',
+  keywords:['justicia','honor','sacrificio'],
+  upright:'Justicia, honor y valor para sacrificarse por lo correcto. Fidelidad a la palabra dada y victoria limpia.',
+  reversed:'Bloqueo, desánimo o conflicto injusto. Cuidado con sacrificios que no sirven a nada.',
+  myth:'Tyr perdió la mano en la boca del lobo Fenrir para que los dioses pudieran atarlo. El Sigrdrífumál aconseja grabar runas de victoria nombrando dos veces a Tyr; el poema anglosajón la llama estrella fiel que guía.'},
+ {id:'berkano', name:'Berkano', glyph:'ᛒ', sound:'b', aett:2, literal:'abedul', symmetric:false,
+  path:'M12 6V54M12 6L28 18L12 30L28 42L12 54',
+  keywords:['nacimiento','crecimiento','cuidado'],
+  upright:'El abedul: nacimiento, crecimiento, cuidado y renovación. Tiempo de gestar y proteger lo que empieza.',
+  reversed:'Estancamiento, tensiones en lo familiar o algo que no termina de brotar.',
+  myth:'El abedul es de los primeros árboles en reverdecer tras el invierno. El poema anglosajón lo describe hermoso aunque sin fruto; se asocia a diosas madre como Frigg o Nerthus.'},
+ {id:'ehwaz', name:'Ehwaz', glyph:'ᛖ', sound:'e', aett:2, literal:'caballo', symmetric:false,
+  path:'M10 54V6L20 18L30 6V54',
+  keywords:['avance','confianza','colaboración'],
+  upright:'El caballo: avance, confianza mutua y colaboración entre dos que se mueven juntos. Cambio gradual y progreso.',
+  reversed:'Inquietud, desconfianza en un vínculo o deseo de cambio sin dirección.',
+  myth:'El poema anglosajón la llama alegría de los nobles, caballo orgulloso de sus cascos. Evoca a Sleipnir y la unión entre jinete y montura.'},
+ {id:'mannaz', name:'Mannaz', glyph:'ᛗ', sound:'m', aett:2, literal:'ser humano', symmetric:false,
+  path:'M10 54V6L30 26M30 54V6L10 26',
+  keywords:['humanidad','conciencia','comunidad'],
+  upright:'El ser humano y la comunidad: conciencia de uno mismo y de los demás. Inteligencia, cooperación y aceptación de la propia mortalidad.',
+  reversed:'Aislamiento, autoengaño o desconfianza hacia los otros.',
+  myth:'El poema anglosajón dice que el hombre alegre es querido por los suyos, aunque todos han de separarse un día. Tácito menciona a Mannus como antepasado de los germanos; en el Rígsþula, el dios Ríg engendra los linajes humanos.'},
+ {id:'laguz', name:'Laguz', glyph:'ᛚ', sound:'l', aett:2, literal:'agua, lago', symmetric:false,
+  path:'M14 54V6L28 18',
+  keywords:['intuición','emoción','fluir'],
+  upright:'El agua: intuición, emoción y lo inconsciente que fluye. Déjate llevar por la corriente sin soltar el timón.',
+  reversed:'Confusión, miedo a lo emocional o decisiones tomadas a ciegas.',
+  myth:'El poema anglosajón dice que el agua parece interminable a quien se adentra en ella en barco inestable. Se vincula a Njörd y a los pozos de Urd y de Mímir bajo Yggdrasil.'},
+ {id:'ingwaz', name:'Ingwaz', glyph:'ᛜ', sound:'ŋ (ng)', aett:2, literal:'el dios Ing', symmetric:true,
+  path:'M20 16L30 30L20 44L10 30Z',
+  keywords:['semilla','gestación','culminación'],
+  upright:'La semilla: energía que se acumula, se completa y prepara un nuevo comienzo. Fertilidad y culminación.',
+  reversed:null,
+  myth:'Ing es un nombre antiguo de Freyr (Yngvi), dios de la fertilidad. El poema anglosajón cuenta que Ing fue visto primero entre los daneses del este y luego partió sobre las olas seguido de su carro.'},
+ {id:'dagaz', name:'Dagaz', glyph:'ᛞ', sound:'d', aett:2, literal:'día', symmetric:true,
+  path:'M8 10V50M32 10V50M8 10L32 50M32 10L8 50',
+  keywords:['despertar','claridad','cambio'],
+  upright:'El día: despertar, claridad súbita y transformación. El punto en que la noche se vuelve amanecer.',
+  reversed:null,
+  myth:'Dagr es el día personificado, hijo de Nótt (la Noche) y de Delling, que recorre el cielo a caballo. El poema anglosajón lo llama luz querida y esperanza para todos.'},
+ {id:'othala', name:'Othala', glyph:'ᛟ', sound:'o', aett:2, literal:'heredad, patrimonio', symmetric:false,
+  path:'M20 6L32 22L10 50M20 6L8 22L30 50',
+  keywords:['hogar','raíces','legado'],
+  upright:'La heredad: el hogar, la tierra de los antepasados, lo que se recibe y se transmite. Pertenencia, raíces y legado.',
+  reversed:'Desarraigo, conflictos por herencias o apego a tradiciones que ya no sirven.',
+  myth:'El poema anglosajón la describe como hogar querido donde se disfruta en paz de lo justo. Se relaciona con Odín como antepasado y con el antiguo derecho odal a la tierra familiar.'}
+];
+
+var BLANK = {id:'wyrd', name:'Wyrd (runa en blanco)', glyph:'', sound:'—', aett:null, literal:'el destino no escrito', symmetric:true, blank:true,
+  path:'',
+  keywords:['lo incognoscible','entrega','vacío fértil'],
+  upright:'El espacio vacío: lo que todavía no está escrito o no puede saberse. Invita a soltar el control y a confiar en el proceso.',
+  reversed:null,
+  myth:'Añadido moderno de Ralph Blum (The Book of Runes, 1982). No aparece en ninguna fuente antigua; el término wyrd, en cambio, es el destino tejido del inglés antiguo.'};
+
+var CASTINGS = {
+  dia:{tab:'Runa del día', title:'Runa del día', n:1,
+    desc:'Una sola runa como tono o consejo para la jornada.',
+    positions:[{label:'Runa del día'}]},
+  nornas:{tab:'Tres runas de las Nornas', title:'Tres runas de las Nornas', n:3,
+    desc:'Las tres Nornas tejen el destino al pie de Yggdrasil. Cada runa se lee en su tiempo.',
+    positions:[{label:'Urd · lo que fue'},{label:'Verdandi · lo que está siendo'},{label:'Skuld · lo que debe ser'}]},
+  cruz:{tab:'Cruz rúnica', title:'Cruz rúnica (cinco runas)', n:5, layout:'cross',
+    desc:'Disposición moderna en cruz, habitual en manuales contemporáneos; no procede de fuentes antiguas. Se saca en este orden: centro, izquierda, derecha, abajo, arriba.',
+    positions:[{label:'1 · Presente, el núcleo',area:'c'},{label:'2 · Pasado, lo que queda atrás',area:'l'},{label:'3 · Futuro, hacia dónde va',area:'r'},{label:'4 · Fundamento, lo que ayuda',area:'b'},{label:'5 · Desafío, lo que se opone',area:'t'}]},
+  nueve:{tab:'Las nueve runas', title:'Las nueve runas', n:9, layout:'nine',
+    desc:'Se lanzan nueve runas sobre el paño. Solo se leen las que caen boca arriba; la distancia al centro indica su peso.'},
+  libre:{tab:'Tirada libre', title:'Tirada libre', n:3, free:true,
+    desc:'Elige cuántas runas sacar (de 1 a 9) y léelas en orden.'}
+};
+var ORDER = ['dia','nornas','cruz','nueve','libre'];
+
+/* ---------- azar ---------- */
+function randInt(max){
+  if(!(max>=1)) throw new Error('max inválido');
+  var buf = new Uint32Array(1);
+  var lim = Math.floor(4294967296/max)*max;
+  var x;
+  do { crypto.getRandomValues(buf); x = buf[0]; } while (x >= lim);
+  return x % max;
+}
+function randFloat(){ return randInt(1000000)/1000000; }
+function shuffle(arr){
+  for (var i = arr.length-1; i > 0; i--){
+    var j = randInt(i+1); var t = arr[i]; arr[i] = arr[j]; arr[j] = t;
+  }
+  return arr;
+}
+function draw(n, opts){
+  opts = opts || {};
+  var pool = RUNES.slice();
+  if (opts.blank) pool.push(BLANK);
+  if (n < 1 || n > pool.length) throw new Error('número de runas fuera de rango');
+  shuffle(pool);
+  return pool.slice(0, n).map(function(r){
+    return {rune:r, reversed: !!opts.reversals && !r.symmetric && randInt(2) === 1};
+  });
+}
+function zoneOf(d){ return d < 0.36 ? 0 : (d < 0.72 ? 1 : 2); }
+var ZONES = ['Centro · lo que pesa ahora','Anillo medio · influencias cercanas','Borde · lo lejano o secundario'];
+function castNine(opts){
+  var d = draw(9, opts);
+  var pts = [];
+  for (var k = 0; k < 9; k++){
+    var best = null;
+    for (var tries = 0; tries < 300; tries++){
+      var r = Math.sqrt(randFloat()) * 0.86, a = randFloat() * Math.PI * 2;
+      var p = {x:r*Math.cos(a), y:r*Math.sin(a), dist:r};
+      var ok = pts.every(function(q){ return Math.hypot(q.x-p.x, q.y-p.y) > 0.27; });
+      if (ok){ best = p; break; }
+      if (!best) best = p;
+    }
+    pts.push(best);
+  }
+  return d.map(function(item, i){
+    var faceUp = randInt(2) === 1;
+    return {rune:item.rune, reversed: faceUp ? item.reversed : false, faceUp:faceUp,
+      x:pts[i].x, y:pts[i].y, dist:pts[i].dist, zone:zoneOf(pts[i].dist), rot:(randInt(41)-20)};
+  });
+}
+
+globalThis.RunasAPI = {RUNES:RUNES, BLANK:BLANK, AETTS:AETTS, CASTINGS:CASTINGS, ORDER:ORDER, ZONES:ZONES,
+  draw:draw, shuffle:shuffle, randInt:randInt, castNine:castNine, zoneOf:zoneOf};
+
+if (typeof document === 'undefined') return;
+
+/* ---------- interfaz ---------- */
+var $ = function(id){ return document.getElementById(id); };
+var root = document.documentElement;
+var reduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+function store(k, v){ try { if (v === undefined) return localStorage.getItem(k); localStorage.setItem(k, v); } catch(e){ return null; } }
+var savedTheme = store('runas-theme');
+if (savedTheme === 'light' || savedTheme === 'dark') root.setAttribute('data-theme', savedTheme);
+function currentTheme(){
+  var t = root.getAttribute('data-theme');
+  if (t) return t;
+  return (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) ? 'dark' : 'light';
+}
+function paintThemeBtn(){ $('themeBtn').textContent = currentTheme() === 'dark' ? 'Tema claro' : 'Tema oscuro'; }
+$('themeBtn').addEventListener('click', function(){
+  var next = currentTheme() === 'dark' ? 'light' : 'dark';
+  root.setAttribute('data-theme', next); store('runas-theme', next); paintThemeBtn();
+});
+paintThemeBtn();
+
+function esc(s){ return String(s).replace(/[&<>"]/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
+function svgFor(r){
+  if (!r.path) return '<svg viewBox="0 0 40 60" aria-hidden="true"></svg>';
+  return '<svg viewBox="0 0 40 60" aria-hidden="true"><path class="rp hl" d="'+r.path+'"/><path class="rp cut" d="'+r.path+'"/></svg>';
+}
+function tileHTML(item, cls, label){
+  var r = item.rune;
+  var c = 'tile' + (cls ? ' '+cls : '') + (item.reversed ? ' rev' : '');
+  return '<button type="button" class="'+c+'" aria-label="'+esc(label)+'"><span class="inner"><span class="face back"></span><span class="face front">'+svgFor(r)+'</span></span></button>';
+}
+function runeLabel(item){ return item.rune.name + (item.reversed ? ' (invertida)' : ''); }
+
+var state = {cast:'dia', last:null, timers:[]};
+var freeSel = $('freeN');
+for (var i = 1; i <= 9; i++){ var o = document.createElement('option'); o.value = i; o.textContent = i; if (i === 3) o.selected = true; freeSel.appendChild(o); }
+var savedFree = parseInt(store('runas-free'), 10); if (savedFree >= 1 && savedFree <= 9) freeSel.value = String(savedFree);
+freeSel.addEventListener('change', function(){ store('runas-free', freeSel.value); });
+
+var tabs = $('tabs');
+ORDER.forEach(function(key){
+  var b = document.createElement('button');
+  b.type = 'button'; b.className = 'tab'; b.setAttribute('role','tab'); b.id = 'tab-'+key;
+  b.setAttribute('aria-controls','panel'); b.textContent = CASTINGS[key].tab; b.dataset.key = key;
+  b.addEventListener('click', function(){ selectCast(key); });
+  tabs.appendChild(b);
+});
+tabs.addEventListener('keydown', function(e){
+  if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return;
+  var idx = ORDER.indexOf(state.cast) + (e.key === 'ArrowRight' ? 1 : -1);
+  idx = (idx + ORDER.length) % ORDER.length; selectCast(ORDER[idx]); $('tab-'+ORDER[idx]).focus();
+});
+
+function clearTimers(){ state.timers.forEach(clearTimeout); state.timers = []; }
+function selectCast(key){
+  clearTimers();
+  state.cast = key; state.last = null; store('runas-cast', key);
+  ORDER.forEach(function(k){ var t = $('tab-'+k); t.setAttribute('aria-selected', k === key ? 'true' : 'false'); t.tabIndex = k === key ? 0 : -1; });
+  $('panel').setAttribute('aria-labelledby','tab-'+key);
+  var c = CASTINGS[key];
+  $('castTitle').textContent = c.title; $('castDesc').textContent = c.desc;
+  $('freeWrap').hidden = !c.free;
+  var board = $('board'); board.className = 'board empty' + (c.layout === 'nine' ? ' nine' : ''); board.innerHTML = c.layout === 'nine' ? '<span class="ring r2"></span><span class="ring r1"></span>' : '';
+  $('reading').innerHTML = ''; $('drawBtn').disabled = false;
+  $('explain').innerHTML = explainFor(key);
+}
+function explainFor(key){
+  if (key === 'nueve') return '<p><strong>Cómo se lee.</strong> Tácito (Germania, cap. 10) cuenta que los germanos marcaban tablillas de madera con signos, las esparcían sobre un paño blanco y el sacerdote, mirando al cielo, tomaba tres y las interpretaba. El nueve es número sagrado en la tradición nórdica: las nueve noches de Odín en el árbol, los nueve mundos.</p><p>Aquí se lanzan nueve runas. Las que caen <em>boca abajo</em> (piedra lisa) quedan en silencio. Las que caen <em>boca arriba</em> se leen según dónde han caído: <strong>centro</strong>, lo que pesa ahora; <strong>anillo medio</strong>, influencias cercanas; <strong>borde</strong>, lo lejano o secundario. Una runa boca arriba puede además salir invertida si está activada la opción.</p>';
+  if (key === 'cruz') return '<p>La cruz no aparece en las fuentes antiguas: es una disposición contemporánea que adapta a las runas la lógica de pasado, presente y futuro, con un eje vertical entre lo que sostiene y lo que se opone.</p>';
+  if (key === 'nornas') return '<p>Urd, Verdandi y Skuld riegan el fresno Yggdrasil con agua del pozo de Urd (Völuspá). Sus nombres se suelen asociar a lo que fue, lo que está siendo y lo que ha de ser.</p>';
+  return '<p>Pulsa una runa o una línea de la lectura para ver su ficha completa.</p>';
+}
+
+function opts(){ return {reversals:$('optRev').checked, blank:$('optBlank').checked}; }
+
+function doCast(){
+  clearTimers();
+  var key = state.cast, c = CASTINGS[key], board = $('board');
+  board.classList.remove('empty');
+  var items, html = '';
+  if (c.layout === 'nine'){
+    items = castNine(opts());
+    html = '<span class="ring r2"></span><span class="ring r1"></span>';
+    items.forEach(function(it, i){
+      var left = 50 + it.x*50, top = 50 + it.y*50;
+      var label = it.faceUp ? runeLabel(it) + ', ' + ZONES[it.zone] : 'Runa boca abajo';
+      html += tileHTML(it, it.faceUp ? '' : 'down', label).replace('class="tile', 'data-i="'+i+'" style="left:'+left.toFixed(1)+'%;top:'+top.toFixed(1)+'%;--rot:'+it.rot+'deg" class="tile');
+    });
+  } else {
+    var n = c.free ? parseInt(freeSel.value, 10) : c.n;
+    items = draw(n, opts());
+    var positions = c.free ? items.map(function(_, i){ return {label:'Runa ' + (i+1)}; }) : c.positions;
+    items.forEach(function(it, i){
+      it.pos = positions[i];
+      var cls = n === 1 ? 'big' : '';
+      html += '<div class="slot' + (it.pos.area ? ' a-'+it.pos.area : '') + '">' +
+        tileHTML(it, cls, it.pos.label + ': ' + runeLabel(it)).replace('class="tile', 'data-i="'+i+'" class="tile') +
+        '<span class="lab">' + esc(it.pos.label) + '</span></div>';
+    });
+  }
+  board.innerHTML = html;
+  state.last = {key:key, items:items};
+  $('reading').innerHTML = '';
+  $('drawBtn').disabled = true;
+  var tiles = board.querySelectorAll('.tile');
+  tiles.forEach(function(t){
+    t.addEventListener('click', function(){
+      var it = items[+t.dataset.i];
+      if (t.classList.contains('down')) return;
+      if (!t.classList.contains('shown')) t.classList.add('shown');
+      openFicha(it, t);
+    });
+  });
+  var step = reduced ? 0 : 380, start = reduced ? 0 : 250;
+  var k = 0;
+  tiles.forEach(function(t, i){
+    if (t.classList.contains('down')) return;
+    var delay = start + step * k++;
+    if (reduced) t.classList.add('shown');
+    else state.timers.push(setTimeout(function(){ t.classList.add('shown'); }, delay));
+  });
+  var done = function(){ renderReading(); $('drawBtn').disabled = false; };
+  if (reduced) done(); else state.timers.push(setTimeout(done, start + step * k + 500));
+}
+
+function meaning(it){ return it.reversed && it.rune.reversed ? it.rune.reversed : it.rune.upright; }
+function renderReading(){
+  var L = state.last; if (!L) return;
+  var out = '<h3>Lectura</h3>';
+  var list;
+  if (L.key === 'nueve'){
+    list = L.items.map(function(it, i){ return {it:it, i:i}; }).filter(function(x){ return x.it.faceUp; })
+      .sort(function(a, b){ return a.it.zone - b.it.zone || a.it.dist - b.it.dist; });
+    var down = 9 - list.length;
+    if (!list.length){
+      $('reading').innerHTML = out + '<p class="msg">Ninguna runa ha caído boca arriba. Puede leerse como «no es momento de preguntar»; vuelve a lanzar cuando lo sientas.</p>';
+      return;
+    }
+    out += '<p class="msg">' + list.length + ' boca arriba, ' + down + ' boca abajo (en silencio).</p>';
+    list = list.map(function(x){ return {it:x.it, i:x.i, pos:ZONES[x.it.zone]}; });
+  } else {
+    list = L.items.map(function(it, i){ return {it:it, i:i, pos:it.pos.label}; });
+  }
+  out += '<ol>';
+  list.forEach(function(x){
+    var r = x.it.rune;
+    out += '<li tabindex="0" data-i="' + x.i + '"><div class="pos">' + esc(x.pos) + '</div>' +
+      '<div><span class="nm">' + esc(r.name) + '</span>' + (r.glyph ? ' <span class="runic" aria-hidden="true">' + r.glyph + '</span>' : '') +
+      (x.it.reversed ? ' <span class="badge">invertida</span>' : '') + '</div>' +
+      '<div class="kw">' + esc(r.keywords.join(' · ')) + '</div><p>' + esc(meaning(x.it)) + '</p></li>';
+  });
+  out += '</ol>';
+  var rd = $('reading'); rd.innerHTML = out;
+  rd.querySelectorAll('li[data-i]').forEach(function(li){
+    var open = function(){ openFicha(L.items[+li.dataset.i], li); };
+    li.addEventListener('click', open);
+    li.addEventListener('keydown', function(e){ if (e.key === 'Enter' || e.key === ' '){ e.preventDefault(); open(); } });
+  });
+}
+
+var lastFocus = null;
+function openFicha(it, from){
+  lastFocus = from || null;
+  var r = it.rune;
+  var aett = r.aett === null ? 'Ninguno (añadido moderno)' : AETTS[r.aett];
+  var h = '<button type="button" class="close" id="fichaClose" aria-label="Cerrar">×</button>' +
+    '<div class="head">' + tileHTML({rune:r, reversed:it.reversed}, 'shown') +
+    '<div><h2 id="fichaName">' + esc(r.name) + (r.glyph ? '<span class="uni runic" aria-hidden="true">' + r.glyph + '</span>' : '') + '</h2>' +
+    (it.reversed ? '<span class="badge" style="margin-left:0">ha salido invertida</span>' : '') + '</div></div>' +
+    '<dl><dt>Sonido</dt><dd>' + esc(r.sound) + '</dd><dt>Ætt</dt><dd>' + esc(aett) + '</dd><dt>Significa</dt><dd>' + esc(r.literal) + '</dd>' +
+    '<dt>Claves</dt><dd>' + esc(r.keywords.join(' · ')) + '</dd></dl>' +
+    '<h3>Al derecho</h3><p' + (!it.reversed ? ' class="cur"' : '') + '>' + esc(r.upright) + '</p>';
+  if (r.reversed) h += '<h3>Invertida (merkstave)</h3><p' + (it.reversed ? ' class="cur"' : '') + '>' + esc(r.reversed) + '</p>';
+  else h += '<h3>Invertida</h3><p>' + (r.blank ? 'No tiene forma invertida.' : 'Runa simétrica: se ve igual al girarla, así que no tiene lectura invertida.') + (r.note ? ' ' + esc(r.note) : '') + '</p>';
+  h += '<h3>Raíz mítica</h3><p>' + esc(r.myth) + '</p>';
+  var f = $('ficha'); f.innerHTML = h;
+  f.querySelector('.head .tile').tabIndex = -1;
+  $('overlay').hidden = false;
+  $('fichaClose').addEventListener('click', closeFicha);
+  $('fichaClose').focus();
+}
+function closeFicha(){ $('overlay').hidden = true; if (lastFocus && lastFocus.focus) lastFocus.focus(); }
+$('overlay').addEventListener('click', function(e){ if (e.target === $('overlay')) closeFicha(); });
+document.addEventListener('keydown', function(e){ if (e.key === 'Escape' && !$('overlay').hidden) closeFicha(); });
+
+$('drawBtn').addEventListener('click', doCast);
+['optRev','optBlank'].forEach(function(id){
+  var el = $(id), v = store('runas-'+id);
+  if (v === '1') el.checked = true; else if (v === '0') el.checked = false;
+  el.addEventListener('change', function(){ store('runas-'+id, el.checked ? '1' : '0'); });
+});
+var savedCast = store('runas-cast');
+selectCast(ORDER.indexOf(savedCast) >= 0 ? savedCast : 'dia');
+})();
+</script>
+</body>
+</html>

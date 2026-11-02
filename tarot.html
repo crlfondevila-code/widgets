@@ -1,0 +1,713 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mesa de tarot</title>
+<meta name="description" content="Tiradas de tarot con la baraja Rider–Waite–Smith: carta del día, tres cartas, cruz celta, herradura y tirada libre.">
+<style>
+:root{
+  --bg:#efe7d6; --bg2:#e6dcc6; --felt:#f6f0e2; --ink:#2b2418; --muted:#6c604b;
+  --line:#cdbf9f; --gold:#9a7428; --gold-soft:#c9a75a; --accent:#5b3f6b;
+  --card-back1:#2e2440; --card-back2:#43355c; --card-edge:#d9c79a;
+  --panel:#fbf7ee; --chip:#ece2cb; --shadow:0 6px 18px rgba(60,45,20,.18);
+  --focus:#5b3f6b;
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#141a17; --bg2:#1a221e; --felt:#1d2a24; --ink:#ece4d2; --muted:#a99f8a;
+    --line:#34463c; --gold:#d2b26a; --gold-soft:#a88a4a; --accent:#c5a7dc;
+    --card-back1:#251d34; --card-back2:#3a2d52; --card-edge:#b89a5a;
+    --panel:#18211d; --chip:#26342d; --shadow:0 8px 22px rgba(0,0,0,.45);
+    --focus:#d2b26a;
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#141a17; --bg2:#1a221e; --felt:#1d2a24; --ink:#ece4d2; --muted:#a99f8a;
+  --line:#34463c; --gold:#d2b26a; --gold-soft:#a88a4a; --accent:#c5a7dc;
+  --card-back1:#251d34; --card-back2:#3a2d52; --card-edge:#b89a5a;
+  --panel:#18211d; --chip:#26342d; --shadow:0 8px 22px rgba(0,0,0,.45);
+  --focus:#d2b26a;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{
+  background:var(--bg); color:var(--ink);
+  font-family:"Iowan Old Style","Palatino Linotype",Palatino,"Book Antiqua",Georgia,"Times New Roman",serif;
+  font-size:16px; line-height:1.5; -webkit-text-size-adjust:100%;
+}
+.wrap{max-width:1000px;margin:0 auto;padding:16px}
+header.top{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px}
+header.top h1{font-size:1.35rem;font-weight:600;letter-spacing:.02em;margin:0;color:var(--ink)}
+header.top h1 span{color:var(--gold)}
+.theme-btn{
+  background:transparent;border:1px solid var(--line);color:var(--muted);border-radius:999px;
+  padding:4px 12px;font:inherit;font-size:.85rem;cursor:pointer;white-space:nowrap
+}
+.theme-btn:hover{color:var(--ink);border-color:var(--gold-soft)}
+button:focus-visible,input:focus-visible,select:focus-visible,[tabindex]:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
+
+/* Pestañas */
+.tabs{display:flex;gap:4px;overflow-x:auto;border-bottom:1px solid var(--line);scrollbar-width:thin;margin:0 -16px;padding:0 16px}
+.tab{
+  flex:0 0 auto;background:transparent;border:0;border-bottom:2px solid transparent;color:var(--muted);
+  font:inherit;font-size:.95rem;padding:8px 12px;cursor:pointer;margin-bottom:-1px
+}
+.tab[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--gold)}
+.tab:hover{color:var(--ink)}
+
+/* Mesa */
+.panel{padding-top:14px}
+.panel[hidden]{display:none}
+.controls{display:flex;flex-wrap:wrap;gap:10px 16px;align-items:center;margin-bottom:12px;font-size:.9rem}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:999px;overflow:hidden;background:var(--panel)}
+.seg label{position:relative;cursor:pointer}
+.seg input{position:absolute;opacity:0;pointer-events:none}
+.seg span{display:block;padding:5px 12px;color:var(--muted)}
+.seg input:checked + span{background:var(--chip);color:var(--ink)}
+.seg input:focus-visible + span{outline:2px solid var(--focus);outline-offset:-2px}
+.switch{display:inline-flex;align-items:center;gap:6px;cursor:pointer;color:var(--muted)}
+.switch input{accent-color:var(--gold);width:16px;height:16px}
+.sel{display:inline-flex;align-items:center;gap:6px;color:var(--muted)}
+.sel select{font:inherit;font-size:.9rem;background:var(--panel);color:var(--ink);border:1px solid var(--line);border-radius:6px;padding:3px 6px}
+.draw-btn{
+  font:inherit;font-size:.95rem;cursor:pointer;border-radius:999px;padding:7px 18px;
+  background:var(--gold);color:#fff8e8;border:1px solid var(--gold);box-shadow:var(--shadow);letter-spacing:.02em
+}
+:root[data-theme="dark"] .draw-btn{color:#1a1408}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .draw-btn{color:#1a1408}}
+.draw-btn:hover{filter:brightness(1.06)}
+.hint{color:var(--muted);font-size:.85rem;margin:0 0 8px}
+
+.table{
+  background:radial-gradient(ellipse at center, var(--felt) 0%, var(--bg2) 100%);
+  border:1px solid var(--line);border-radius:14px;padding:22px 12px 18px;
+  min-height:220px;display:flex;justify-content:center;align-items:flex-start;overflow:hidden
+}
+
+/* Cartas */
+.spread{--cw:110px;display:flex;flex-wrap:wrap;justify-content:center;gap:14px 12px}
+.slot{width:var(--cw);display:flex;flex-direction:column;align-items:center;gap:6px;position:relative}
+.plabel{font-size:.78rem;color:var(--muted);text-align:center;line-height:1.25;max-width:calc(var(--cw) + 20px)}
+.card{
+  width:var(--cw);aspect-ratio:300/520;perspective:900px;border:0;padding:0;background:transparent;cursor:pointer;
+  position:relative;display:block;border-radius:8px
+}
+.card.empty{cursor:default;border:1px dashed var(--line);border-radius:8px}
+.inner{position:absolute;inset:0;transform-style:preserve-3d;transition:transform .7s cubic-bezier(.3,.7,.2,1)}
+.card.flipped .inner{transform:rotateY(180deg)}
+.face{position:absolute;inset:0;backface-visibility:hidden;-webkit-backface-visibility:hidden;border-radius:8px;overflow:hidden;box-shadow:var(--shadow)}
+.back{
+  background:
+    radial-gradient(circle at 50% 50%, transparent 0 22%, rgba(217,199,154,.35) 22.5% 23.5%, transparent 24%),
+    repeating-linear-gradient(45deg, rgba(217,199,154,.12) 0 2px, transparent 2px 10px),
+    repeating-linear-gradient(-45deg, rgba(217,199,154,.12) 0 2px, transparent 2px 10px),
+    linear-gradient(160deg,var(--card-back1),var(--card-back2));
+  border:3px solid var(--card-edge);display:flex;align-items:center;justify-content:center;
+  color:var(--card-edge);font-size:calc(var(--cw) * .28)
+}
+.front{transform:rotateY(180deg);background:#f4ecd8;border:1px solid var(--card-edge)}
+.art{position:absolute;inset:0;transition:transform .4s ease}
+.card.rev .art{transform:rotate(180deg)}
+.art img{width:100%;height:100%;object-fit:cover;display:block}
+.fallback{
+  position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;
+  background:linear-gradient(170deg,#f8f1df,#eadcb8);color:#3a2e1a;text-align:center;padding:8px;
+  border:2px solid #b8975a;border-radius:8px
+}
+.fallback .fb-sym{font-size:calc(var(--cw) * .32);line-height:1;color:#8a5a1c}
+.fallback .fb-num{font-size:calc(var(--cw) * .14);letter-spacing:.06em;color:#6a4a1a}
+.fallback .fb-name{font-size:calc(var(--cw) * .105);line-height:1.2}
+.badge{
+  position:absolute;top:-8px;left:-8px;z-index:3;width:22px;height:22px;border-radius:50%;
+  background:var(--gold);color:#fff8e8;font-size:.72rem;display:flex;align-items:center;justify-content:center;
+  font-family:system-ui,sans-serif;font-weight:600;box-shadow:0 1px 3px rgba(0,0,0,.3)
+}
+.card.selected{outline:2px solid var(--gold);outline-offset:3px}
+
+/* Carta del día */
+.spread.s-day{--cw:150px}
+.spread.s-three{--cw:120px;gap:14px 20px}
+.spread.s-free{--cw:96px}
+.spread.s-shoe{--cw:96px;gap:10px}
+
+/* Herradura: arco en pantallas anchas */
+@media (min-width:760px){
+  .spread.s-shoe{flex-wrap:nowrap;padding-bottom:40px}
+  .spread.s-shoe .slot:nth-child(1),.spread.s-shoe .slot:nth-child(7){transform:translateY(0)}
+  .spread.s-shoe .slot:nth-child(2),.spread.s-shoe .slot:nth-child(6){transform:translateY(22px)}
+  .spread.s-shoe .slot:nth-child(3),.spread.s-shoe .slot:nth-child(5){transform:translateY(40px)}
+  .spread.s-shoe .slot:nth-child(4){transform:translateY(48px)}
+}
+
+/* Cruz celta */
+.spread.s-celtic{--cw:96px}
+@media (min-width:760px){
+  .spread.s-celtic{
+    --cw:88px;--ch:calc(var(--cw) * 520 / 300);
+    display:grid;gap:8px 14px;
+    grid-template-columns:repeat(3, calc(var(--cw) + 10px)) 26px calc(var(--cw) + 10px);
+    grid-template-rows:repeat(8, calc(var(--ch) / 2));
+    justify-items:center;align-items:center;row-gap:8px
+  }
+  .spread.s-celtic .slot{gap:0}
+  .spread.s-celtic .plabel{display:none}
+  .spread.s-celtic .p1{grid-column:2;grid-row:4 / 6}
+  .spread.s-celtic .p2{grid-column:2;grid-row:4 / 6;z-index:2;transform:rotate(90deg)}
+  .spread.s-celtic .p3{grid-column:2;grid-row:6 / 8}
+  .spread.s-celtic .p4{grid-column:1;grid-row:4 / 6}
+  .spread.s-celtic .p5{grid-column:2;grid-row:2 / 4}
+  .spread.s-celtic .p6{grid-column:3;grid-row:4 / 6}
+  .spread.s-celtic .p7{grid-column:5;grid-row:7 / 9}
+  .spread.s-celtic .p8{grid-column:5;grid-row:5 / 7}
+  .spread.s-celtic .p9{grid-column:5;grid-row:3 / 5}
+  .spread.s-celtic .p10{grid-column:5;grid-row:1 / 3}
+  .spread.s-celtic .p2 .badge{transform:rotate(-90deg)}
+}
+@media (max-width:420px){
+  .spread.s-day{--cw:130px}
+  .spread.s-three{--cw:86px;gap:12px 10px}
+  .spread.s-celtic,.spread.s-free,.spread.s-shoe{--cw:78px}
+  .table{padding:20px 6px 14px}
+}
+
+/* Detalle */
+.detail{
+  margin-top:14px;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px 16px;
+  display:grid;grid-template-columns:auto 1fr;gap:4px 16px
+}
+.detail[hidden]{display:none}
+.detail .dthumb{--cw:84px;grid-row:1 / span 6}
+.detail .dthumb .card{cursor:default}
+.detail h3{margin:0;font-size:1.15rem;font-weight:600}
+.detail .meta{color:var(--muted);font-size:.85rem}
+.chips{display:flex;flex-wrap:wrap;gap:4px;margin:4px 0}
+.chip{background:var(--chip);border-radius:999px;padding:1px 9px;font-size:.78rem;color:var(--ink)}
+.detail p{margin:4px 0;font-size:.93rem}
+.detail .on{border-left:3px solid var(--gold);padding-left:8px}
+.detail .off{color:var(--muted);padding-left:11px}
+.detail .key{font-size:.88rem;color:var(--accent);font-style:italic}
+.detail b{font-weight:600}
+@media (max-width:520px){
+  .detail{grid-template-columns:1fr}
+  .detail .dthumb{grid-row:auto;justify-self:center}
+}
+
+/* Lectura */
+.reading{margin-top:16px}
+.reading h2{font-size:1rem;font-weight:600;margin:0 0 6px;color:var(--muted);letter-spacing:.04em;text-transform:uppercase}
+.reading ol{margin:0;padding:0;list-style:none;counter-reset:r}
+.reading li{
+  counter-increment:r;padding:9px 4px 9px 36px;border-top:1px solid var(--line);position:relative;cursor:pointer;font-size:.93rem
+}
+.reading li::before{
+  content:counter(r);position:absolute;left:4px;top:10px;width:22px;height:22px;border-radius:50%;
+  border:1px solid var(--gold-soft);color:var(--gold);font-size:.75rem;display:flex;align-items:center;justify-content:center;
+  font-family:system-ui,sans-serif
+}
+.reading li:hover{background:var(--chip)}
+.reading .rpos{color:var(--muted);font-size:.82rem;display:block}
+.reading .rname{font-weight:600}
+.reading .rori{color:var(--accent);font-size:.85rem}
+.reading .rmean{display:block;margin-top:2px}
+footer{margin-top:22px;padding-top:10px;border-top:1px solid var(--line);color:var(--muted);font-size:.8rem;text-align:center}
+
+@media (prefers-reduced-motion: reduce){
+  .inner,.art{transition:none !important}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <h1><span>✶</span> Mesa de tarot</h1>
+    <button class="theme-btn" id="themeBtn" type="button" aria-label="Cambiar tema claro u oscuro">Tema: sistema</button>
+  </header>
+  <nav class="tabs" role="tablist" id="tabs" aria-label="Tiradas"></nav>
+  <main id="panels"></main>
+  <footer>Significados resumidos por Serapis. Imágenes: baraja Rider–Waite–Smith (1909), dominio público, vía Wikimedia Commons.</footer>
+</div>
+
+<script>
+(function(){
+"use strict";
+
+/* ===================== DATOS ===================== */
+var IMG_BASE = "https://commons.wikimedia.org/wiki/Special:FilePath/";
+
+// [nombre, archivo, palabras clave, derecha, invertida, clave simbólica]
+var MAJORS = [
+ ["El Loco","RWS_Tarot_00_Fool.jpg","comienzo, espontaneidad, salto de fe, libertad",
+  "Un comienzo sin plan cerrado: confianza en el camino y disposición a lo desconocido. Se avanza ligero, con curiosidad.",
+  "Imprudencia, impulsos sin rumbo o, al contrario, miedo a dar el primer paso. Conviene mirar dónde se pisa.",
+  "Álef · Aire. El espíritu antes de la forma; el puer aeternus junguiano y la materia prima todavía sin trabajar."],
+ ["El Mago","RWS_Tarot_01_Magician.jpg","voluntad, habilidad, iniciativa, recursos",
+  "Capacidad de convertir la intención en acto con los recursos que ya se tienen. Es momento de empezar y concentrar la voluntad.",
+  "Talento disperso, manipulación o engaño; la voluntad se usa mal o se queda sin usar.",
+  "Bet · Mercurio. El Mercurio alquímico que media entre lo alto y lo bajo («como es arriba, es abajo»); arquetipo del trickster."],
+ ["La Sacerdotisa","RWS_Tarot_02_High_Priestess.jpg","intuición, misterio, saber oculto, silencio",
+  "Un conocimiento que llega desde dentro. Toca esperar, escuchar y no forzar lo que todavía no se muestra.",
+  "Desconexión de la intuición, secretos que pesan o atención puesta solo en la superficie.",
+  "Guímel · Luna. El ánima como guía hacia el inconsciente; el velo entre las columnas Boaz y Jakín."],
+ ["La Emperatriz","RWS_Tarot_03_Empress.jpg","fertilidad, abundancia, naturaleza, cuidado",
+  "Crecimiento, creatividad y gozo de los sentidos: lo que se cultiva con cariño da fruto.",
+  "Bloqueo creativo, dependencia o descuido de uno mismo; exceso o carencia a la hora de cuidar.",
+  "Dálet · Venus. Arquetipo de la Gran Madre; la tierra fecunda que nutre la obra."],
+ ["El Emperador","RWS_Tarot_04_Emperor.jpg","autoridad, estructura, orden, protección",
+  "Estabilidad, liderazgo y reglas claras. Dar forma y límites a lo que se quiere construir.",
+  "Rigidez, afán de dominio o falta de disciplina: una autoridad que oprime o que brilla por su ausencia.",
+  "He · Aries. El arquetipo del padre y el logos que ordena; el azufre que fija y da forma."],
+ ["El Hierofante (El Sumo Sacerdote)","RWS_Tarot_05_Hierophant.jpg","tradición, enseñanza, institución, creencias",
+  "Aprendizaje dentro de una tradición, guía de un maestro y valores compartidos con una comunidad.",
+  "Rebeldía frente a la ortodoxia o, al revés, dogmatismo. Puede pedir buscar el propio camino fuera de la norma.",
+  "Vav · Tauro. El senex sabio que hace de puente entre lo sagrado y lo humano."],
+ ["Los Enamorados","RWS_Tarot_06_Lovers.jpg","unión, elección, valores, armonía",
+  "Un vínculo significativo y una elección hecha desde los propios valores, con el corazón y la cabeza de acuerdo.",
+  "Desarmonía, indecisión o una elección que traiciona lo que uno valora de verdad.",
+  "Záyin · Géminis. La coniunctio alquímica, unión de opuestos; el encuentro de ánima y ánimus."],
+ ["El Carro","RWS_Tarot_07_Chariot.jpg","voluntad, avance, control, victoria",
+  "Determinación que lleva adelante: fuerzas contrarias puestas bajo un mismo mando y dirigidas a una meta.",
+  "Falta de dirección, agresividad o pérdida de control; cada caballo tira hacia un lado.",
+  "Jet · Cáncer. El yo que conduce las polaridades (las dos esfinges, blanca y negra)."],
+ ["La Fuerza","RWS_Tarot_08_Strength.jpg","coraje, compasión, dominio interior, paciencia",
+  "Fuerza suave: los instintos se templan con paciencia y afecto, no con violencia.",
+  "Inseguridad, poca confianza en uno mismo o instintos desbordados que mandan.",
+  "Tet · Leo. El león alquímico domado; integración consciente de la energía instintiva (la sombra no reprimida, sino amansada)."],
+ ["El Ermitaño","RWS_Tarot_09_Hermit.jpg","introspección, soledad, búsqueda, guía interior",
+  "Retirarse para mirar hacia dentro; la propia lámpara basta para ver el siguiente paso.",
+  "Aislamiento excesivo, soledad no elegida o rechazo a detenerse a reflexionar.",
+  "Yod · Virgo. El arquetipo del viejo sabio; la luz de la conciencia que se busca a solas."],
+ ["La Rueda de la Fortuna","RWS_Tarot_10_Wheel_of_Fortune.jpg","ciclos, destino, cambio, oportunidad",
+  "Un giro de la suerte: los ciclos cambian y conviene moverse con ellos y aprovechar la ocasión.",
+  "Resistencia al cambio, mala racha o repetición de los mismos patrones.",
+  "Kaf · Júpiter. La rota y la circulatio alquímica; el centro inmóvil (el sí-mismo) alrededor del cual todo gira."],
+ ["La Justicia","RWS_Tarot_11_Justice.jpg","equidad, verdad, causa y efecto, decisión",
+  "Una decisión justa y lúcida. Cada acto tiene consecuencias y aquí se asumen con honestidad.",
+  "Injusticia, falta de honradez o huida de la propia responsabilidad.",
+  "Lámed · Libra. La balanza y la espada; el equilibrio de Maat."],
+ ["El Colgado","RWS_Tarot_12_Hanged_Man.jpg","pausa, entrega, nueva perspectiva, sacrificio",
+  "Suspender la acción y mirar las cosas del revés; ceder para comprender lo que la prisa no deja ver.",
+  "Estancamiento, sacrificio inútil o resistencia a soltar lo que ya no sirve.",
+  "Mem · Agua. La inversión de valores: el ego suspendido ante algo más grande que él."],
+ ["La Muerte","RWS_Tarot_13_Death.jpg","final, transformación, transición, despojo",
+  "Algo termina para que otra cosa pueda nacer: un cambio profundo e inevitable, rara vez literal.",
+  "Aferrarse a lo que ya acabó; miedo al cambio que alarga la agonía.",
+  "Nun · Escorpio. La nigredo y la putrefactio alquímicas: morir a una forma para renacer en otra."],
+ ["La Templanza","RWS_Tarot_14_Temperance.jpg","equilibrio, moderación, mezcla, paciencia",
+  "Combinar opuestos en la medida justa; sanar y avanzar con calma y paciencia.",
+  "Desequilibrio, excesos o prisa; elementos que no terminan de casar.",
+  "Sámej · Sagitario. El arte de mezclar (solve et coagula); el ángel que trasvasa el agua de vida."],
+ ["El Diablo","RWS_Tarot_15_Devil.jpg","atadura, deseo, materialismo, sombra",
+  "Apegos, dependencias o deseos que atan. Toca mirar de frente aquello que esclaviza.",
+  "Liberación de cadenas y toma de conciencia; a veces, advertencia de recaída.",
+  "Ayin · Capricornio. La sombra junguiana; las cadenas están flojas y pueden quitarse."],
+ ["La Torre","RWS_Tarot_16_Tower.jpg","ruptura, revelación, caída, liberación",
+  "Derrumbe súbito de estructuras falsas: una verdad irrumpe y lo que no era sólido cae.",
+  "Crisis evitada a medias, miedo al cambio o una sacudida que se vive por dentro.",
+  "Pe · Marte. El rayo que rompe la persona (la máscara); calcinatio alquímica."],
+ ["La Estrella","RWS_Tarot_17_Star.jpg","esperanza, renovación, inspiración, serenidad",
+  "Calma después de la tormenta: fe renovada, sanación y una guía tranquila.",
+  "Desánimo, falta de fe o desconexión de lo que inspira.",
+  "Tsade · Acuario. El agua de vida vertida sobre tierra y agua; la albedo tras la noche oscura."],
+ ["La Luna","RWS_Tarot_18_Moon.jpg","ilusión, miedo, inconsciente, sueños",
+  "Terreno incierto: intuición y sueños, pero también confusión y temores. No todo es lo que parece.",
+  "La confusión empieza a disiparse; miedos y engaños salen a la luz.",
+  "Qof · Piscis. El inconsciente profundo; el sendero entre el perro y el lobo, lo domesticado y lo salvaje."],
+ ["El Sol","RWS_Tarot_19_Sun.jpg","alegría, éxito, vitalidad, claridad",
+  "Plenitud, éxito y claridad: la vida se muestra luminosa y sencilla.",
+  "Alegría que se apaga pronto, optimismo excesivo o un éxito que se retrasa.",
+  "Resh · Sol. La conciencia solar y el niño divino; citrinitas camino de la rubedo."],
+ ["El Juicio","RWS_Tarot_20_Judgement.jpg","despertar, llamada, renacimiento, balance",
+  "Una llamada interior a renacer: hacer balance, perdonarse y responder a una vocación.",
+  "Dudas, autocrítica muy dura o no querer escuchar la llamada.",
+  "Shin · Fuego (y Espíritu). La resurrección; la voz del sí-mismo que llama a la totalidad."],
+ ["El Mundo","RWS_Tarot_21_World.jpg","culminación, integración, plenitud, viaje cumplido",
+  "Un ciclo completado e integrado: logro, plenitud y sensación de estar en su sitio.",
+  "Cierre pendiente, algo que queda sin terminar o atajos que impiden completar el ciclo.",
+  "Tav · Saturno (y Tierra). El mandala de la totalidad, imagen del sí-mismo; el lapis alcanzado."]
+];
+
+var SUITS = [
+ {key:"Wands",  name:"Bastos",   sym:"♣", elem:"fuego"},
+ {key:"Cups",   name:"Copas",    sym:"♥", elem:"agua"},
+ {key:"Swords", name:"Espadas",  sym:"♠", elem:"aire"},
+ {key:"Pents",  name:"Oros",     sym:"♦", elem:"tierra"}
+];
+var RANKS = ["As","Dos","Tres","Cuatro","Cinco","Seis","Siete","Ocho","Nueve","Diez","Sota","Caballo","Reina","Rey"];
+
+// Por palo: 14 × [palabras clave, derecha, invertida]
+var MINOR_TEXT = {
+ Wands:[
+  ["inspiración, impulso, nuevo proyecto","Chispa creativa y energía para empezar algo; una idea que pide ponerse en marcha.","Retrasos, falta de motivación o ideas que no consiguen arrancar."],
+  ["planificación, decisión, horizonte","Mirar lejos y trazar un plan; elegir entre quedarse en lo conocido o expandirse.","Miedo a lo desconocido o planes que nunca llegan a concretarse."],
+  ["expansión, previsión, espera activa","Los esfuerzos empiezan a dar fruto y se abre un horizonte más amplio.","Obstáculos en la expansión o decepción porque las cosas tardan."],
+  ["celebración, hogar, estabilidad","Celebración, armonía y logros compartidos; un hogar o un grupo que acoge.","Tensiones en casa, celebraciones aplazadas o una etapa de transición."],
+  ["conflicto, competencia, rivalidad","Choque de opiniones o competencia; una tensión que puede resultar estimulante.","Evitar el conflicto, o bien resolverlo y llegar a un acuerdo."],
+  ["victoria, reconocimiento, éxito público","Triunfo reconocido por los demás y confianza ganada con esfuerzo.","Falta de reconocimiento, orgullo excesivo o miedo a caer."],
+  ["defensa, perseverancia, firmeza","Defender la propia posición con firmeza frente a los retos.","Agotamiento, sensación de estar desbordado o ganas de rendirse."],
+  ["rapidez, movimiento, noticias","Acontecimientos rápidos, mensajes y avance sin obstáculos.","Retrasos, prisas mal dirigidas o frustración por la espera."],
+  ["resiliencia, vigilancia, último esfuerzo","Cansado pero en pie: aguantar una última prueba antes de llegar.","Desconfianza excesiva, agotamiento o tentación de abandonar."],
+  ["carga, responsabilidad, esfuerzo","Demasiado peso sobre los hombros; el éxito trae consigo nuevas cargas.","Soltar lastre y delegar, o derrumbarse bajo el peso."],
+  ["entusiasmo, exploración, mensaje","Espíritu curioso; una noticia o una idea nueva que entusiasma.","Falta de dirección, ideas que no cuajan o impaciencia."],
+  ["acción, aventura, impulsividad","Energía lanzada hacia delante: pasión, audacia y ganas de aventura.","Precipitación, impaciencia o proyectos que se quedan a medias."],
+  ["confianza, calidez, determinación","Seguridad en sí misma, carisma y vitalidad que contagia.","Inseguridad, celos o exigencia que quema a los demás."],
+  ["liderazgo, visión, emprendimiento","Un líder con visión que inspira y lleva las ideas a la práctica.","Impulsividad, autoritarismo o expectativas desmesuradas."]
+ ],
+ Cups:[
+  ["amor, emoción nueva, apertura","Un corazón que se abre: nuevo amor, compasión o creatividad emocional.","Emociones bloqueadas, sensación de vacío o afecto no correspondido."],
+  ["unión, vínculo, reciprocidad","Conexión mutua entre iguales: pareja, amistad o alianza.","Desequilibrio en la relación, desconfianza o distanciamiento."],
+  ["amistad, celebración, comunidad","Alegría compartida con amigos; algo que celebrar juntos.","Excesos, chismes o sentirse fuera del grupo."],
+  ["apatía, contemplación, insatisfacción","Desinterés por lo que se ofrece; ensimismamiento que no deja ver.","Se sale de la apatía y se acepta una oportunidad nueva."],
+  ["pérdida, duelo, arrepentimiento","Mirar lo perdido sin ver lo que aún queda en pie.","Aceptación, perdón y ganas de seguir adelante."],
+  ["nostalgia, infancia, recuerdos","Recuerdos dulces, inocencia y reencuentros con el pasado.","Quedarse anclado en el pasado o idealizarlo."],
+  ["ilusiones, opciones, fantasía","Muchas opciones y sueños; riesgo de dispersión o de espejismo.","Llega la claridad y se elige con realismo."],
+  ["abandono, búsqueda, partida","Dejar atrás lo que ya no llena para buscar algo más hondo.","Miedo a irse, vagar sin rumbo o volver a lo que ya se dejó."],
+  ["satisfacción, deseo cumplido, gozo","Contento y deseos satisfechos; tradicionalmente, la carta del deseo.","Insatisfacción, autocomplacencia o excesos."],
+  ["armonía familiar, plenitud emocional","Felicidad duradera en el hogar y en los vínculos cercanos.","Discordia familiar o valores que no coinciden."],
+  ["sensibilidad, mensaje afectivo, intuición","Una noticia emocional, curiosidad sensible y creatividad.","Inmadurez emocional o bloqueo creativo."],
+  ["romanticismo, propuesta, idealismo","Una propuesta afectiva o creativa; seguir al corazón.","Cambios de humor, idealismo poco realista o celos."],
+  ["compasión, intuición, cuidado","Escucha profunda, empatía y serenidad emocional.","Dependencia emocional o sensibilidad desbordada."],
+  ["equilibrio emocional, diplomacia, madurez","Domina sus emociones sin reprimirlas; un consejero sereno.","Manipulación emocional, frialdad o cambios bruscos de ánimo."]
+ ],
+ Swords:[
+  ["claridad, verdad, decisión","Una idea clara, una verdad que corta la confusión.","Confusión, ideas mal empleadas o caos mental."],
+  ["indecisión, bloqueo, tregua","Una decisión difícil que se evita; equilibrio tenso con los ojos vendados.","Exceso de información; la decisión acaba imponiéndose."],
+  ["dolor, pena, separación","Herida emocional, decepción o un duelo necesario.","Recuperación, perdón y dolor que empieza a soltarse."],
+  ["descanso, recuperación, retiro","Una pausa para reponerse y ordenar la mente.","Inquietud, agotamiento o volver a la lucha demasiado pronto."],
+  ["conflicto, derrota, victoria vacía","Ganar a cualquier precio deja soledad; un conflicto poco limpio.","Reconciliación, o bien resentimiento que se arrastra."],
+  ["transición, viaje, dejar atrás","Alejarse de aguas turbulentas hacia algo más tranquilo.","Asuntos pendientes o resistencia a marcharse."],
+  ["engaño, estrategia, astucia","Actuar a escondidas o con astucia; conviene preguntarse quién engaña a quién.","Confesión, verdades que salen a la luz o autoengaño."],
+  ["restricción, impotencia, trampa mental","Sentirse atrapado por los propios pensamientos, aunque la salida existe.","Liberación y nuevas perspectivas."],
+  ["ansiedad, insomnio, preocupación","Angustia y miedos nocturnos que la mente agranda.","Empieza a superarse la ansiedad, o se toca fondo para salir."],
+  ["final doloroso, fondo, traición","Un ciclo termina de golpe; ya no se puede caer más bajo.","Recuperación lenta o resistencia a un final inevitable."],
+  ["curiosidad, vigilancia, ideas nuevas","Mente despierta, sed de saber y atención alerta.","Cotilleo, palabras precipitadas o ideas sin acción."],
+  ["ambición, rapidez, determinación","Avanzar con fuerza y argumentos, sin dudar.","Imprudencia, agresividad verbal o falta de enfoque."],
+  ["lucidez, independencia, franqueza","Juicio claro y honesto nacido de la experiencia.","Frialdad, crueldad o amargura."],
+  ["autoridad intelectual, verdad, ética","Pensamiento claro y justo; decide con la razón.","Abuso de poder o manipulación intelectual."]
+ ],
+ Pents:[
+  ["oportunidad material, prosperidad, manifestación","Una nueva oportunidad tangible: trabajo, dinero o salud.","Oportunidad perdida o mala planificación."],
+  ["equilibrio, adaptación, malabarismo","Hacer malabares con varias prioridades con soltura.","Desorganización o exceso de compromisos."],
+  ["colaboración, oficio, aprendizaje","Trabajo en equipo y oficio bien hecho; el esfuerzo se reconoce.","Falta de cooperación o trabajo descuidado."],
+  ["control, ahorro, seguridad","Proteger lo que se tiene: prudencia que puede volverse avaricia.","Soltar el control: generosidad o gasto imprudente."],
+  ["carencia, penuria, exclusión","Dificultad material o sentirse fuera; la ayuda está cerca y no se ve.","Recuperación y salida de la penuria."],
+  ["generosidad, dar y recibir, ayuda","Compartir recursos con equilibrio entre dar y recibir.","Deudas, ayuda con condiciones o desigualdad."],
+  ["paciencia, evaluación, largo plazo","Una pausa para evaluar lo sembrado; la cosecha llega con tiempo.","Impaciencia o esfuerzo que no da fruto."],
+  ["diligencia, maestría, aprendizaje","Trabajo constante y detallado; perfeccionar un oficio.","Perfeccionismo, desmotivación o trabajo mecánico."],
+  ["autosuficiencia, bienestar, independencia","Disfrutar de lo conseguido con el propio esfuerzo.","Dependencia económica o vivir de las apariencias."],
+  ["legado, riqueza, familia","Prosperidad duradera, herencia y estabilidad familiar.","Problemas de herencia, pérdidas o conflictos familiares por dinero."],
+  ["estudio, oportunidad, plan concreto","Un aprendiz aplicado; noticias de una oportunidad práctica.","Falta de progreso, pereza o planes sin concretar."],
+  ["constancia, método, fiabilidad","Avanzar despacio pero seguro; trabajo responsable.","Estancamiento, rutina o terquedad."],
+  ["cuidado práctico, abundancia, sentido común","Nutre y sostiene; equilibrio entre hogar y trabajo.","Descuido de uno mismo, dependencia o materialismo."],
+  ["prosperidad, seguridad, gestión","Éxito material sólido y generosidad práctica.","Codicia, rigidez u obsesión por el estatus."]
+ ]
+};
+
+var ROMAN = ["0","I","II","III","IV","V","VI","VII","VIII","IX","X","XI","XII","XIII","XIV","XV","XVI","XVII","XVIII","XIX","XX","XXI"];
+
+function buildDeck(){
+  var deck = [];
+  MAJORS.forEach(function(m, i){
+    deck.push({id:"M"+(i<10?"0":"")+i, major:true, num:i, numLabel:ROMAN[i], name:m[0], img:m[1],
+      keywords:m[2], upright:m[3], reversed:m[4], key:m[5], sym:"✦", suit:"Arcanos mayores"});
+  });
+  SUITS.forEach(function(s){
+    MINOR_TEXT[s.key].forEach(function(t, r){
+      var n = r + 1, nn = (n<10?"0":"") + n;
+      var rank = RANKS[r];
+      var name = rank + " de " + s.name;
+      deck.push({id:s.key+nn, major:false, num:n, numLabel:(n<=10 ? (n===1?"As":String(n)) : rank), name:name,
+        img:s.key+nn+".jpg", keywords:t[0], upright:t[1], reversed:t[2], key:null, sym:s.sym, suit:s.name, elem:s.elem});
+    });
+  });
+  return deck;
+}
+var DECK = buildDeck();
+
+/* ===================== AZAR ===================== */
+function randomInt(n){ // entero uniforme en [0, n)
+  if (n <= 0) throw new Error("n debe ser positivo");
+  var max = 0x100000000, limit = max - (max % n), buf = new Uint32Array(1), x;
+  do { crypto.getRandomValues(buf); x = buf[0]; } while (x >= limit);
+  return x % n;
+}
+function shuffle(arr){ // Fisher–Yates
+  var a = arr.slice();
+  for (var i = a.length - 1; i > 0; i--){
+    var j = randomInt(i + 1);
+    var t = a[i]; a[i] = a[j]; a[j] = t;
+  }
+  return a;
+}
+function draw(n, opts){
+  opts = opts || {};
+  var pool = opts.majorsOnly ? DECK.filter(function(c){ return c.major; }) : DECK;
+  if (n > pool.length) throw new Error("No hay cartas suficientes");
+  return shuffle(pool).slice(0, n).map(function(c){
+    return {card:c, reversed: !!opts.allowReversed && randomInt(2) === 1};
+  });
+}
+
+/* ===================== TIRADAS ===================== */
+var THREE_LABELS = {
+  tiempo:["Pasado","Presente","Futuro"],
+  consejo:["Situación","Obstáculo","Consejo"]
+};
+var SPREADS = [
+  {id:"day", tab:"Carta del día", cls:"s-day", hint:"Una carta para orientar el día.",
+   positions:function(){ return ["Carta del día"]; }},
+  {id:"three", tab:"Tres cartas", cls:"s-three", hint:"Elige cómo leer las tres posiciones.",
+   positions:function(st){ return THREE_LABELS[st.labels || "tiempo"]; }},
+  {id:"celtic", tab:"Cruz celta", cls:"s-celtic", hint:"Disposición clásica de A. E. Waite: la cruz a la izquierda, el báculo a la derecha (de abajo arriba). La carta 2 se coloca atravesada sobre la 1.",
+   positions:function(){ return ["Situación presente","Lo que cruza","Base / raíz","Pasado reciente","Lo que corona (meta, lo consciente)","Futuro próximo","Uno mismo","Entorno","Esperanzas y temores","Resultado"]; }},
+  {id:"shoe", tab:"Herradura", cls:"s-shoe", hint:"Siete cartas en arco, de izquierda a derecha.",
+   positions:function(){ return ["Pasado","Presente","Futuro próximo","Consejo","Entorno (los demás)","Obstáculos","Resultado"]; }},
+  {id:"free", tab:"Tirada libre", cls:"s-free", hint:"Elige cuántas cartas quieres sacar.",
+   positions:function(st){ var a=[]; for (var i=1;i<=(st.count||3);i++) a.push("Carta "+i); return a; }}
+];
+
+globalThis.TarotCore = {DECK:DECK, MAJORS:MAJORS, SUITS:SUITS, RANKS:RANKS, SPREADS:SPREADS, THREE_LABELS:THREE_LABELS,
+  randomInt:randomInt, shuffle:shuffle, draw:draw, IMG_BASE:IMG_BASE};
+
+if (typeof document === "undefined") return; // entorno de pruebas (node)
+
+/* ===================== INTERFAZ ===================== */
+function el(tag, attrs, kids){
+  var e = document.createElement(tag);
+  if (attrs) for (var k in attrs){
+    if (k === "class") e.className = attrs[k];
+    else if (k === "text") e.textContent = attrs[k];
+    else if (k.indexOf("on") === 0) e.addEventListener(k.slice(2), attrs[k]);
+    else e.setAttribute(k, attrs[k]);
+  }
+  (kids || []).forEach(function(c){ if (c) e.appendChild(typeof c === "string" ? document.createTextNode(c) : c); });
+  return e;
+}
+
+function fallbackFor(card){
+  return el("div",{class:"fallback","aria-hidden":"true"},[
+    el("div",{class:"fb-sym",text:card.sym}),
+    el("div",{class:"fb-num",text:card.major ? card.numLabel : (card.num <= 10 ? card.numLabel : "")}),
+    el("div",{class:"fb-name",text:card.name})
+  ]);
+}
+function artFor(card){
+  var art = el("div",{class:"art"});
+  var img = el("img",{alt:card.name, loading:"lazy", decoding:"async", referrerpolicy:"no-referrer",
+    src: IMG_BASE + encodeURIComponent(card.img) + "?width=300"});
+  img.addEventListener("error", function(){ if (img.parentNode) img.parentNode.replaceChild(fallbackFor(card), img); });
+  art.appendChild(img);
+  return art;
+}
+function cardEl(drawn, opts){
+  opts = opts || {};
+  var b = el("button",{class:"card", type:"button"});
+  var inner = el("div",{class:"inner"});
+  inner.appendChild(el("div",{class:"face back","aria-hidden":"true",text:"✶"}));
+  var front = el("div",{class:"face front"});
+  if (drawn) front.appendChild(artFor(drawn.card));
+  inner.appendChild(front);
+  b.appendChild(inner);
+  if (drawn && drawn.reversed) b.classList.add("rev");
+  if (opts.flipped) b.classList.add("flipped");
+  return b;
+}
+function oriLabel(d){ return d.reversed ? "invertida" : "al derecho"; }
+
+var state = {};
+var reduceMotion = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+function renderTabs(){
+  var tabs = document.getElementById("tabs"), panels = document.getElementById("panels");
+  SPREADS.forEach(function(sp, i){
+    state[sp.id] = {majorsOnly:false, allowReversed:true, labels:"tiempo", count:3, drawn:null, sel:-1};
+    var tab = el("button",{class:"tab", role:"tab", id:"tab-"+sp.id, "aria-controls":"panel-"+sp.id,
+      "aria-selected": i===0 ? "true":"false", tabindex: i===0 ? "0":"-1", type:"button", text:sp.tab,
+      onclick:function(){ selectTab(sp.id); }});
+    tabs.appendChild(tab);
+    var panel = el("section",{class:"panel", role:"tabpanel", id:"panel-"+sp.id, "aria-labelledby":"tab-"+sp.id});
+    if (i !== 0) panel.hidden = true;
+    panels.appendChild(panel);
+    buildPanel(sp, panel);
+  });
+  tabs.addEventListener("keydown", function(e){
+    if (e.key !== "ArrowRight" && e.key !== "ArrowLeft") return;
+    var ids = SPREADS.map(function(s){ return s.id; });
+    var cur = ids.indexOf(document.activeElement.id.replace("tab-",""));
+    if (cur < 0) return;
+    var nxt = (cur + (e.key === "ArrowRight" ? 1 : -1) + ids.length) % ids.length;
+    selectTab(ids[nxt]); document.getElementById("tab-"+ids[nxt]).focus();
+  });
+}
+function selectTab(id){
+  SPREADS.forEach(function(sp){
+    var on = sp.id === id;
+    var t = document.getElementById("tab-"+sp.id);
+    t.setAttribute("aria-selected", on ? "true":"false"); t.tabIndex = on ? 0 : -1;
+    document.getElementById("panel-"+sp.id).hidden = !on;
+  });
+  try { localStorage.setItem("tarot-tab", id); } catch(e){}
+}
+
+function buildPanel(sp, panel){
+  var st = state[sp.id];
+  var name = "mode-"+sp.id;
+  var seg = el("div",{class:"seg", role:"radiogroup", "aria-label":"Baraja"},[
+    el("label",null,[el("input",{type:"radio", name:name, value:"major"}), el("span",{text:"Solo arcanos mayores"})]),
+    el("label",null,[el("input",{type:"radio", name:name, value:"full", checked:"checked"}), el("span",{text:"Baraja completa (78)"})])
+  ]);
+  seg.addEventListener("change", function(e){ st.majorsOnly = e.target.value === "major"; });
+  var rev = el("label",{class:"switch"},[el("input",{type:"checkbox", checked:"checked"}), "Permitir invertidas"]);
+  rev.querySelector("input").addEventListener("change", function(e){ st.allowReversed = e.target.checked; });
+
+  var controls = el("div",{class:"controls"},[seg, rev]);
+
+  if (sp.id === "three"){
+    var s3 = el("select",{"aria-label":"Lectura de las posiciones"},[
+      el("option",{value:"tiempo",text:"Pasado · Presente · Futuro"}),
+      el("option",{value:"consejo",text:"Situación · Obstáculo · Consejo"})
+    ]);
+    s3.addEventListener("change", function(){ st.labels = s3.value; renderSpread(sp); });
+    controls.appendChild(el("label",{class:"sel"},["Posiciones:", s3]));
+  }
+  if (sp.id === "free"){
+    var sn = el("select",{"aria-label":"Número de cartas"});
+    for (var i=1;i<=10;i++){ var o = el("option",{value:String(i),text:String(i)}); if (i===3) o.selected = true; sn.appendChild(o); }
+    sn.addEventListener("change", function(){ st.count = parseInt(sn.value,10); st.drawn = null; st.sel = -1; renderSpread(sp); });
+    controls.appendChild(el("label",{class:"sel"},["Cartas:", sn]));
+  }
+  var btn = el("button",{class:"draw-btn", type:"button", text:"Barajar y tirar", onclick:function(){ doDraw(sp); }});
+  controls.appendChild(btn);
+
+  panel.appendChild(controls);
+  panel.appendChild(el("p",{class:"hint",text:sp.hint}));
+  var table = el("div",{class:"table"});
+  table.appendChild(el("div",{class:"spread "+sp.cls, id:"spread-"+sp.id, "aria-live":"polite"}));
+  panel.appendChild(table);
+  panel.appendChild(el("div",{class:"detail", id:"detail-"+sp.id, hidden:"hidden", "aria-live":"polite"}));
+  panel.appendChild(el("div",{class:"reading", id:"reading-"+sp.id}));
+  renderSpread(sp);
+}
+
+function doDraw(sp){
+  var st = state[sp.id];
+  var n = sp.positions(st).length;
+  st.drawn = draw(n, {majorsOnly:st.majorsOnly, allowReversed:st.allowReversed});
+  st.sel = -1;
+  renderSpread(sp, true);
+}
+
+function renderSpread(sp, animate){
+  var st = state[sp.id];
+  var labels = sp.positions(st);
+  var box = document.getElementById("spread-"+sp.id);
+  box.innerHTML = "";
+  labels.forEach(function(lab, i){
+    var d = st.drawn ? st.drawn[i] : null;
+    var slot = el("div",{class:"slot p"+(i+1)});
+    var c;
+    if (d){
+      c = cardEl(d, {flipped: !animate});
+      c.setAttribute("aria-label", "Posición "+(i+1)+", "+lab+": "+(animate ? "carta boca abajo" : d.card.name+", "+oriLabel(d)));
+      c.addEventListener("click", function(){
+        if (!c.classList.contains("flipped")){ c.classList.add("flipped"); c.setAttribute("aria-label","Posición "+(i+1)+", "+lab+": "+d.card.name+", "+oriLabel(d)); }
+        showDetail(sp, i);
+      });
+      if (animate){
+        var delay = reduceMotion ? 0 : 250 + i * 180;
+        setTimeout(function(){
+          c.classList.add("flipped");
+          c.setAttribute("aria-label","Posición "+(i+1)+", "+lab+": "+d.card.name+", "+oriLabel(d));
+        }, delay);
+      }
+      if (st.sel === i) c.classList.add("selected");
+    } else {
+      c = el("div",{class:"card empty","aria-hidden":"true"});
+    }
+    if (labels.length > 1) slot.appendChild(el("span",{class:"badge",text:String(i+1),"aria-hidden":"true"}));
+    slot.appendChild(c);
+    slot.appendChild(el("div",{class:"plabel",text:lab}));
+    box.appendChild(slot);
+  });
+  renderReading(sp);
+  if (st.sel < 0) document.getElementById("detail-"+sp.id).hidden = true;
+}
+
+function showDetail(sp, i){
+  var st = state[sp.id], d = st.drawn[i], c = d.card;
+  var labels = sp.positions(st);
+  st.sel = i;
+  var box = document.getElementById("spread-"+sp.id);
+  Array.prototype.forEach.call(box.querySelectorAll(".card"), function(x, k){ x.classList.toggle("selected", k === i); });
+  var det = document.getElementById("detail-"+sp.id);
+  det.innerHTML = "";
+  var thumb = el("div",{class:"dthumb"},[cardEl(d,{flipped:true})]);
+  thumb.querySelector(".card").setAttribute("tabindex","-1");
+  thumb.querySelector(".card").setAttribute("aria-hidden","true");
+  det.appendChild(thumb);
+  det.appendChild(el("h3",{text:c.name + (d.reversed ? " (invertida)" : "")}));
+  det.appendChild(el("div",{class:"meta",text:(labels.length>1 ? "Posición "+(i+1)+" · "+labels[i]+" · " : "") + (c.major ? "Arcano mayor "+c.numLabel : c.suit + " · elemento " + c.elem)}));
+  var chips = el("div",{class:"chips"});
+  c.keywords.split(",").forEach(function(k){ chips.appendChild(el("span",{class:"chip",text:k.trim()})); });
+  det.appendChild(chips);
+  det.appendChild(el("p",{class:d.reversed ? "off":"on"},[el("b",{text:"Al derecho: "}), c.upright]));
+  det.appendChild(el("p",{class:d.reversed ? "on":"off"},[el("b",{text:"Invertida: "}), c.reversed]));
+  if (c.key) det.appendChild(el("p",{class:"key"},[el("b",{text:"Clave simbólica: "}), c.key]));
+  det.hidden = false;
+}
+
+function renderReading(sp){
+  var st = state[sp.id], box = document.getElementById("reading-"+sp.id);
+  box.innerHTML = "";
+  if (!st.drawn) return;
+  var labels = sp.positions(st);
+  box.appendChild(el("h2",{text:"Lectura"}));
+  var ol = el("ol");
+  st.drawn.forEach(function(d, i){
+    var li = el("li",{tabindex:"0", role:"button", "aria-label":"Ver detalle de "+d.card.name},[
+      el("span",{class:"rpos",text:labels[i]}),
+      el("span",{class:"rname",text:d.card.name}), " ",
+      el("span",{class:"rori",text:"("+oriLabel(d)+")"}),
+      el("span",{class:"rmean",text:d.reversed ? d.card.reversed : d.card.upright})
+    ]);
+    var open = function(){
+      var cardBtn = document.getElementById("spread-"+sp.id).querySelectorAll(".card")[i];
+      if (cardBtn) cardBtn.classList.add("flipped");
+      showDetail(sp, i);
+      document.getElementById("detail-"+sp.id).scrollIntoView({behavior: reduceMotion ? "auto" : "smooth", block:"nearest"});
+    };
+    li.addEventListener("click", open);
+    li.addEventListener("keydown", function(e){ if (e.key === "Enter" || e.key === " "){ e.preventDefault(); open(); } });
+    ol.appendChild(li);
+  });
+  box.appendChild(ol);
+}
+
+/* Tema */
+function setupTheme(){
+  var btn = document.getElementById("themeBtn"), root = document.documentElement;
+  var modes = ["system","light","dark"], names = {system:"sistema", light:"claro", dark:"oscuro"};
+  var cur = "system";
+  try { var saved = localStorage.getItem("tarot-theme"); if (modes.indexOf(saved) >= 0) cur = saved; } catch(e){}
+  function apply(){
+    if (cur === "system") root.removeAttribute("data-theme"); else root.setAttribute("data-theme", cur);
+    btn.textContent = "Tema: " + names[cur];
+  }
+  apply();
+  btn.addEventListener("click", function(){
+    cur = modes[(modes.indexOf(cur) + 1) % modes.length];
+    apply();
+    try { localStorage.setItem("tarot-theme", cur); } catch(e){}
+  });
+}
+
+setupTheme();
+renderTabs();
+try { var t = localStorage.getItem("tarot-tab"); if (t && state[t]) selectTab(t); } catch(e){}
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,960 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>I Ching · Consulta</title>
+<style>
+:root{
+  --paper:#f6f1e7; --card:#fbf8f1; --ink:#26221d; --ink-soft:#5d554b; --muted:#8a8073;
+  --line:#2b2621; --rule:#ddd3c2; --accent:#9b2f22; --accent-soft:#f1e1da; --btn-ink:#fbf8f1;
+  --shadow:0 1px 2px rgba(60,40,20,.06),0 4px 14px rgba(60,40,20,.06);
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --paper:#191714; --card:#221f1b; --ink:#ece4d6; --ink-soft:#c3b8a7; --muted:#968b7c;
+    --line:#e8dfcf; --rule:#3a352e; --accent:#d9735f; --accent-soft:#3a2520; --btn-ink:#191714;
+    --shadow:0 1px 2px rgba(0,0,0,.3),0 4px 14px rgba(0,0,0,.25);
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --paper:#191714; --card:#221f1b; --ink:#ece4d6; --ink-soft:#c3b8a7; --muted:#968b7c;
+  --line:#e8dfcf; --rule:#3a352e; --accent:#d9735f; --accent-soft:#3a2520; --btn-ink:#191714;
+  --shadow:0 1px 2px rgba(0,0,0,.3),0 4px 14px rgba(0,0,0,.25);
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{background:var(--paper);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;font-size:16px;line-height:1.55;-webkit-font-smoothing:antialiased}
+.wrap{max-width:860px;margin:0 auto;padding:20px 16px 36px}
+.serif,h1,h2,h3{font-family:Georgia,"Iowan Old Style","Palatino Linotype",Palatino,"Times New Roman",serif;font-weight:normal}
+header{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:14px}
+h1{font-size:1.7rem;margin:0;letter-spacing:.01em}
+h1 .zh{color:var(--accent);margin-right:.35em}
+.sub{color:var(--muted);font-size:.9rem;margin:2px 0 0}
+.theme{flex:none;border:1px solid var(--rule);background:var(--card);color:var(--ink-soft);border-radius:999px;width:38px;height:38px;cursor:pointer;font-size:1.05rem;line-height:1}
+.theme:hover{color:var(--ink)}
+.card{background:var(--card);border:1px solid var(--rule);border-radius:14px;box-shadow:var(--shadow);padding:18px}
+label.q{display:block;font-size:.85rem;color:var(--muted);margin-bottom:6px}
+input[type=text]{width:100%;font:inherit;color:var(--ink);background:var(--paper);border:1px solid var(--rule);border-radius:10px;padding:10px 12px}
+input[type=text]:focus{outline:2px solid var(--accent);outline-offset:1px;border-color:transparent}
+.actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:14px}
+button.b{font:inherit;border-radius:10px;padding:10px 16px;cursor:pointer;border:1px solid var(--rule);background:transparent;color:var(--ink)}
+button.b:hover:not(:disabled){border-color:var(--ink-soft)}
+button.b:disabled{opacity:.45;cursor:default}
+button.primary{background:var(--ink);color:var(--btn-ink);border-color:var(--ink);font-family:Georgia,serif;font-size:1.08rem;padding:12px 22px;flex:1 1 200px}
+button.primary:hover:not(:disabled){background:var(--accent);border-color:var(--accent)}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.stage{display:grid;grid-template-columns:1fr auto;gap:18px;align-items:center;margin-top:18px}
+@media (max-width:560px){.stage{grid-template-columns:1fr}}
+.coins{display:flex;gap:12px;justify-content:flex-start;min-height:96px;align-items:center;flex-wrap:wrap}
+.coin{width:64px;height:64px;border-radius:50%;display:flex;flex-direction:column;align-items:center;justify-content:center;border:2px solid var(--ink-soft);background:var(--paper);color:var(--ink);font-family:Georgia,serif;position:relative}
+.coin .f{font-size:.85rem;line-height:1.1}
+.coin .v{font-size:.72rem;color:var(--muted)}
+.coin.cara{border-color:var(--accent)}
+.coin.cara .f{color:var(--accent)}
+.coin::after{content:"";position:absolute;inset:6px;border-radius:50%;border:1px dashed var(--rule)}
+.coin.spin{animation:spin .55s ease-in-out}
+@keyframes spin{0%{transform:rotateY(0) translateY(0)}50%{transform:rotateY(540deg) translateY(-14px)}100%{transform:rotateY(1080deg) translateY(0)}}
+@media (prefers-reduced-motion:reduce){.coin.spin{animation:none}}
+.coinsum{font-family:Georgia,serif;color:var(--ink-soft);font-size:.95rem;width:100%}
+.progress{color:var(--muted);font-size:.85rem;margin-top:4px}
+.hex{display:flex;flex-direction:column-reverse;gap:9px;width:150px}
+.hex.sm{width:96px;gap:6px}
+.ln{display:flex;align-items:center;gap:8px;height:14px}
+.hex.sm .ln{height:9px;gap:6px}
+.bar{flex:1;display:flex;gap:16%;height:100%}
+.bar i{flex:1;background:var(--line);border-radius:2px}
+.ln.empty .bar i{background:transparent;border:1px dashed var(--rule)}
+.mk{width:14px;text-align:center;color:var(--accent);font-size:.95rem;line-height:1;font-weight:bold}
+.hex.sm .mk{width:10px;font-size:.75rem}
+.ln.new{animation:fade .45s ease-out}
+@keyframes fade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+.ln .num{width:14px;font-size:.7rem;color:var(--muted);text-align:right}
+.hex.sm .num{display:none}
+#result{margin-top:22px}
+.qshow{font-family:Georgia,serif;font-style:italic;color:var(--ink-soft);border-left:3px solid var(--accent);padding:4px 0 4px 12px;margin:0 0 16px}
+.hexhead{display:grid;grid-template-columns:auto 1fr;gap:18px;align-items:center}
+@media (max-width:420px){.hexhead{grid-template-columns:1fr}}
+.kw{font-size:.8rem;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin:0}
+h2{font-size:1.6rem;margin:2px 0 0;line-height:1.2}
+h2 .py{color:var(--accent)}
+.es{font-family:Georgia,serif;font-size:1.15rem;color:var(--ink-soft);margin:2px 0 0}
+.tris{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:14px}
+@media (max-width:420px){.tris{grid-template-columns:1fr}}
+.tri{border:1px solid var(--rule);border-radius:10px;padding:8px 10px;display:flex;gap:10px;align-items:center;background:var(--paper)}
+.tri .sym{font-size:1.9rem;line-height:1;color:var(--ink)}
+.tri .t1{font-size:.72rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.tri .t2{font-family:Georgia,serif}
+.tri .t3{font-size:.85rem;color:var(--ink-soft)}
+section.sec{margin-top:18px}
+h3{font-size:1.15rem;margin:0 0 6px;color:var(--ink);border-bottom:1px solid var(--rule);padding-bottom:4px}
+section.sec p{margin:6px 0}
+.lines{list-style:none;padding:0;margin:0}
+.lines li{padding:8px 0;border-bottom:1px dashed var(--rule)}
+.lines li:last-child{border-bottom:0}
+.lines b{font-family:Georgia,serif;font-weight:normal;color:var(--accent)}
+.allnote{background:var(--accent-soft);border-radius:10px;padding:10px 12px;margin-top:10px}
+.arrow{text-align:center;color:var(--muted);font-family:Georgia,serif;margin:22px 0 10px;letter-spacing:.05em}
+.arrow span{display:inline-block;border-top:1px solid var(--rule);padding-top:8px}
+.card + .card{margin-top:16px}
+.note{color:var(--muted);font-size:.82rem;margin-top:22px;text-align:center;font-style:italic}
+.hidden{display:none}
+.legend{font-size:.8rem;color:var(--muted);margin-top:10px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <h1><span class="zh">易經</span>I Ching</h1>
+      <p class="sub">Consulta con tres monedas · versión de Richard Wilhelm</p>
+    </div>
+    <button class="theme" id="themeBtn" type="button" aria-label="Cambiar tema claro u oscuro" title="Cambiar tema">◐</button>
+  </header>
+
+  <div class="card">
+    <label class="q" for="pregunta">Tu pregunta (opcional)</label>
+    <input type="text" id="pregunta" placeholder="Escribe aquí lo que quieres consultar…" autocomplete="off">
+    <div class="actions">
+      <button class="b primary" id="tirar" type="button">Tirar monedas</button>
+      <button class="b" id="rapida" type="button">Tirada rápida</button>
+      <button class="b" id="nueva" type="button">Nueva consulta</button>
+    </div>
+    <div class="stage">
+      <div>
+        <div class="coins" id="coins" aria-live="polite"></div>
+        <div class="progress" id="progress">Concéntrate en tu pregunta y tira las monedas seis veces.</div>
+      </div>
+      <div class="hex" id="building" aria-label="Hexagrama en construcción"></div>
+    </div>
+    <div class="legend">Cara = 3 · Cruz = 2. 6 ✕ yin mutable · 7 yang fijo · 8 yin fijo · 9 ○ yang mutable. La primera línea es la de abajo.</div>
+  </div>
+
+  <div id="result" class="hidden"></div>
+
+  <p class="note">Explicaciones resumidas por Serapis siguiendo el I Ching de Richard Wilhelm; para el texto completo, consulta tu libro.</p>
+</div>
+
+<script>
+"use strict";
+/* ---------- Trigramas: 3 bits, línea de abajo = bit menos significativo, yang = 1 ---------- */
+var TRI = {
+  0:{key:"kun",  py:"K'un",  es:"Lo Receptivo",   img:"la tierra",          attr:"abnegado",     sym:"☷"},
+  1:{key:"chen", py:"Chen",  es:"Lo Suscitativo", img:"el trueno",          attr:"movilizante",  sym:"☳"},
+  2:{key:"kan",  py:"K'an",  es:"Lo Abismal",     img:"el agua",            attr:"peligroso",    sym:"☵"},
+  3:{key:"tui",  py:"Tui",   es:"Lo Sereno",      img:"el lago",            attr:"regocijante",  sym:"☱"},
+  4:{key:"ken",  py:"Ken",   es:"El Aquietamiento",img:"la montaña",        attr:"quieto",       sym:"☶"},
+  5:{key:"li",   py:"Li",    es:"Lo Adherente",   img:"el fuego",           attr:"luminoso",     sym:"☲"},
+  6:{key:"sun",  py:"Sun",   es:"Lo Suave",       img:"el viento, la madera",attr:"penetrante",  sym:"☴"},
+  7:{key:"chien",py:"Ch'ien",es:"Lo Creativo",    img:"el cielo",           attr:"fuerte",       sym:"☰"}
+};
+var T = {kun:0, chen:1, kan:2, tui:3, ken:4, li:5, sun:6, chien:7};
+
+/* ---------- Tabla King Wen: KW[inferior][superior] -> número ---------- */
+/* columnas (superior): K'un, Chen, K'an, Tui, Ken, Li, Sun, Ch'ien */
+var KW = [
+  /* inferior K'un   */ [ 2, 16,  8, 45, 23, 35, 20, 12],
+  /* inferior Chen   */ [24, 51,  3, 17, 27, 21, 42, 25],
+  /* inferior K'an   */ [ 7, 40, 29, 47,  4, 64, 59,  6],
+  /* inferior Tui    */ [19, 54, 60, 58, 41, 38, 61, 10],
+  /* inferior Ken    */ [15, 62, 39, 31, 52, 56, 53, 33],
+  /* inferior Li     */ [36, 55, 63, 49, 22, 30, 37, 13],
+  /* inferior Sun    */ [46, 32, 48, 28, 18, 50, 57, 44],
+  /* inferior Ch'ien */ [11, 34,  5, 43, 26, 14,  9,  1]
+];
+
+/* ---------- Nombres (romanización de Wilhelm, títulos de la edición española) ---------- */
+var NAMES = [null,
+ ["Ch'ien","Lo Creativo"],["K'un","Lo Receptivo"],["Chun","La Dificultad Inicial"],["Meng","La Necedad Juvenil"],
+ ["Hsü","La Espera (La Alimentación)"],["Sung","El Conflicto (El Pleito)"],["Shih","El Ejército"],["Pi","La Solidaridad (La Unión)"],
+ ["Hsiao Ch'u","La Fuerza Domesticadora de lo Pequeño"],["Lü","El Porte"],["T'ai","La Paz"],["P'i","El Estancamiento"],
+ ["T'ung Jen","Comunidad con los Hombres"],["Ta Yu","La Posesión de lo Grande"],["Ch'ien","La Modestia"],["Yü","El Entusiasmo"],
+ ["Sui","El Seguimiento"],["Ku","El Trabajo en lo Echado a Perder"],["Lin","El Acercamiento"],["Kuan","La Contemplación (La Vista)"],
+ ["Shih Ho","La Mordedura Tajante"],["Pi","La Gracia"],["Po","La Desintegración"],["Fu","El Retorno (El Tiempo del Solsticio)"],
+ ["Wu Wang","La Inocencia (Lo Inesperado)"],["Ta Ch'u","La Fuerza Domesticadora de lo Grande"],["I","Las Comisuras de la Boca (La Nutrición)"],["Ta Kuo","La Preponderancia de lo Grande"],
+ ["K'an","Lo Abismal, el Agua"],["Li","Lo Adherente, el Fuego"],["Hsien","El Influjo (El Cortejo)"],["Heng","La Duración"],
+ ["Tun","La Retirada"],["Ta Chuang","El Poder de lo Grande"],["Chin","El Progreso"],["Ming I","El Oscurecimiento de la Luz"],
+ ["Chia Jen","El Clan (La Familia)"],["K'uei","El Antagonismo (La Oposición)"],["Chien","El Impedimento"],["Hsieh","La Liberación"],
+ ["Sun","La Merma"],["I","El Aumento"],["Kuai","El Desbordamiento (La Resolución)"],["Kou","Ir al Encuentro"],
+ ["Ts'ui","La Reunión (La Recolección)"],["Sheng","La Subida (El Empuje hacia Arriba)"],["K'un","La Desazón (El Agotamiento)"],["Ching","El Pozo de Agua"],
+ ["Ko","La Revolución (La Muda)"],["Ting","El Caldero"],["Chen","Lo Suscitativo (La Conmoción, el Trueno)"],["Ken","El Aquietamiento (La Montaña)"],
+ ["Chien","La Evolución (El Progreso Paulatino)"],["Kuei Mei","La Muchacha que se Casa"],["Feng","La Plenitud"],["Lü","El Andariego"],
+ ["Sun","Lo Suave (Lo Penetrante, el Viento)"],["Tui","Lo Sereno, el Lago"],["Huan","La Disolución"],["Chieh","La Restricción"],
+ ["Chung Fu","La Verdad Interior"],["Hsiao Kuo","La Preponderancia de lo Pequeño"],["Chi Chi","Después de la Consumación"],["Wei Chi","Antes de la Consumación"]
+];
+
+/* ---------- Textos (resúmenes de Serapis) ---------- */
+var H = [];
+H[1]={d:"La fuerza originaria del cielo obra con sublime éxito, y lo que favorece es mantenerse firme en lo recto. Quien se pone en sintonía con el curso del cielo da forma a las cosas a su debido tiempo y lleva paz y orden a su alrededor.",
+i:"El movimiento del cielo nunca se detiene y es poderoso. Así el noble se hace fuerte por sí mismo y no se cansa de trabajar en su propio carácter.",
+l:["El dragón está aún escondido bajo el agua: no es momento de actuar. Tu fuerza todavía no es reconocida; sé fiel a ti mismo y espera tu hora sin impaciencia.",
+"El dragón aparece en el campo: conviene buscar al gran hombre. Empiezas a mostrarte en tu terreno; acércate a quien pueda orientarte y ayudarte a crecer.",
+"El noble trabaja con energía todo el día y por la noche sigue alerta y cuidadoso: hay peligro, pero no falta. La creciente notoriedad exige vigilancia para no dejarse arrastrar por la ambición.",
+"El dragón vacila sobre la profundidad, a punto de alzar el vuelo: no hay falta. Es un momento de libre elección entre lanzarse a la acción pública o retirarse a madurar; decide según tu naturaleza más íntima.",
+"El dragón vuela en el cielo: conviene ver al gran hombre. Has alcanzado tu plena influencia; tu acción inspira y atrae a los afines, y juntos podéis mucho.",
+"El dragón soberbio tendrá que arrepentirse. Quien quiere subir más allá de su justa medida se aísla de los demás y acaba fracasando."],
+all:"Cuando todas las líneas son nueves: aparece una bandada de dragones sin cabeza, y eso trae ventura. La fuerza se une a la suavidad; nadie se impone como cabeza y todo marcha bien. El signo entero se transforma en Lo Receptivo."};
+
+H[2]={d:"Lo Receptivo tiene sublime éxito con la perseverancia de una yegua: fuerte, pero dócil y fiel. Si quiere tomar la delantera se extravía; si se deja guiar, encuentra su camino. Conviene buscar amigos en el oeste y el sur y renunciar a ellos en el este y el norte; la perseverancia serena trae ventura.",
+i:"La tierra, en su disposición amplia y abierta, lo sostiene todo. Así el noble, con la amplitud de su carácter, sostiene al mundo y a quienes dependen de él.",
+l:["Cuando se pisa escarcha, el hielo firme no está lejos. Los primeros indicios de decadencia anuncian lo que vendrá: hay que reconocerlos y atajarlos a tiempo.",
+"Recto, cuadrado y grande: sin propósito artificioso, todo resulta favorable. Actuar con naturalidad, en armonía con la propia naturaleza, basta para que las cosas salgan bien.",
+"Cualidades ocultas: se puede perseverar. Si estás al servicio de otro, no busques obras propias sino llevar las cosas a término; no reclames reconocimiento y tu valor madurará en silencio.",
+"Un saco atado: ni culpa ni elogio. Es un tiempo de peligro en el que conviene la reserva más estricta y no llamar la atención.",
+"Una falda amarilla: elevada ventura. La verdadera distinción es discreta; la autenticidad y la reserva hacen brillar la virtud sin necesidad de ostentarla.",
+"Los dragones luchan en la pradera y su sangre es negra y amarilla. Cuando lo receptivo pretende ocupar el lugar de lo creativo, ambos salen dañados."],
+all:"Cuando todas las líneas son seises: conviene la perseverancia duradera. Lo receptivo, sostenido por la firmeza constante, se transforma en Lo Creativo y la docilidad se vuelve fuerza clara."};
+
+H[3]={d:"Hay sublime éxito si se persevera en lo recto, pero aún no conviene emprender nada; lo que conviene es designar ayudantes. Como la planta que rompe la tierra al brotar, todo nacimiento trae caos; el desorden se ordena con paciencia y con la ayuda de otros.",
+i:"Nubes y trueno: la tormenta todavía no ha descargado. Así el noble desenreda y pone en orden, como quien separa con cuidado los hilos de una madeja.",
+l:["Vacilación y obstáculos: conviene perseverar y buscar ayudantes. Ante el primer tropiezo no fuerces el paso; mantén el rumbo con humildad y ganarás apoyos.",
+"Las dificultades se acumulan; el caballo y el carro se separan. Quien se acerca no es un bandido sino un pretendiente, pero aún no es momento de comprometerse: aceptar una ayuda que no corresponde ata; con el tiempo llegará la unión adecuada.",
+"Quien persigue al ciervo sin guía se pierde en el bosque. El noble sabe renunciar a tiempo; empeñarse sin conocer el terreno solo trae humillación.",
+"El caballo y el carro se separan: busca la unión. Ir hacia ella trae ventura; acepta la ayuda que se ofrece y da tú el primer paso.",
+"Dificultades para repartir los bienes. Tus buenas intenciones no son comprendidas todavía: en lo pequeño la perseverancia trae ventura; forzar lo grande trae desventura.",
+"El caballo y el carro se separan; lágrimas de sangre. Quien se rinde ante las dificultades queda atrapado en el desaliento; no hay que quedarse ahí."]};
+
+H[4]={d:"La necedad juvenil tiene éxito. No es el maestro quien busca al joven, sino el joven quien busca al maestro. A la primera consulta se le responde; si pregunta dos o tres veces con insistencia, importuna y ya no se le enseña. Conviene la perseverancia.",
+i:"Al pie de la montaña brota un manantial. Así el noble cultiva su carácter con acciones cuidadosas y meticulosas, como el agua que llena cada hueco antes de seguir adelante.",
+l:["Para despertar al necio conviene la disciplina; luego hay que soltarle los grilletes. La disciplina es necesaria, pero si se convierte en mero castigo produce humillación.",
+"Soportar con benevolencia a los inexpertos trae ventura; saber tratar con delicadeza también. El hijo es capaz de llevar la casa: fuerza interior unida a indulgencia.",
+"No tomes a una muchacha que pierde el dominio de sí ante un hombre poderoso; nada es propicio. Quien se arroja servilmente a otro no está en condiciones de aprender.",
+"Necedad encerrada en sí misma: humillación. Quien se enreda en fantasías vacías se aísla; a veces el maestro debe dejarlo solo para que lo descubra.",
+"Necedad infantil: ventura. Quien busca enseñanza con candor y sin arrogancia será ayudado.",
+"Al castigar la necedad no conviene cometer abusos; solo prevenirlos. El castigo sirve para restablecer el orden, no para desahogar la ira."]};
+
+H[5]={d:"Si eres veraz, tendrás luz y éxito; la perseverancia trae ventura y es propicio atravesar las grandes aguas. Ante un peligro que no se puede forzar, se espera con certeza interior, sin impaciencia, sabiendo que el momento llegará.",
+i:"Las nubes suben al cielo: imagen de la espera, pues la lluvia vendrá a su hora. Así el noble come, bebe y se mantiene sereno y alegre.",
+l:["Espera en la pradera: conviene permanecer constante, y así no hay falta. El peligro aún está lejos; no te agites antes de tiempo y sigue tu vida ordinaria.",
+"Espera en la arena: hay algunas habladurías, pero al final ventura. El peligro está más cerca y surgen críticas; mantener la calma lo resuelve.",
+"Espera en el lodo: provoca la llegada del enemigo. Por avanzar antes de tiempo te has puesto en una posición débil; ahora solo sirven la prudencia y la seriedad.",
+"Espera en la sangre: sal del agujero. La situación es extrema; no luches, quédate quieto y deja que lo inevitable pase.",
+"Espera junto al vino y la comida: la perseverancia trae ventura. En medio de la pausa conviene reponer fuerzas y disfrutar, sin perder de vista la meta.",
+"Uno cae en el agujero y llegan tres huéspedes no invitados: hónralos y al final habrá ventura. Lo inesperado, que parece una amenaza, puede ser la salvación si se recibe con respeto."]};
+
+H[6]={d:"Tienes razón y te ves obstaculizado: detenerse con cautela a mitad de camino trae ventura; llevar el conflicto hasta el final trae desventura. Conviene acudir al gran hombre como árbitro y no emprender grandes travesías.",
+i:"El cielo y el agua van en direcciones opuestas: imagen del conflicto. Así el noble, en todo lo que emprende, piensa bien el comienzo para evitar la discordia desde su origen.",
+l:["Si no se perpetúa el asunto, habrá algunas habladurías, pero al final ventura. Lo mejor es abandonar la disputa en su inicio.",
+"No puede pelear: regresa y se retira, y la gente de su pueblo queda libre de culpa. Ante un adversario superior, retirarse a tiempo no es deshonra y protege a los tuyos.",
+"Se nutre de antiguas virtudes; perseverancia, peligro, al final ventura. Lo que es tuyo por mérito no se pierde; si sirves a otro, no busques gloria propia.",
+"No puede pelear: se vuelve y se somete al orden justo, cambia de actitud y encuentra paz. La perseverancia trae ventura.",
+"Pleitear ante él trae elevada ventura. Un árbitro justo y poderoso resuelve el conflicto en favor de quien tiene razón.",
+"Aunque se le conceda un cinturón de honor, antes de acabar la mañana se lo habrán arrebatado tres veces. La victoria ganada a fuerza de pelear hasta el final no dura."]};
+
+H[7]={d:"El ejército necesita perseverancia y un jefe fuerte y experimentado: así hay ventura y no hay falta. Las masas solo se organizan bajo alguien que goce de su confianza, y la guerra es un remedio peligroso que exige causa justa.",
+i:"En medio de la tierra hay agua, como reservas ocultas. Así el noble acrecienta sus fuerzas siendo generoso y cuidando al pueblo.",
+l:["El ejército debe partir en buen orden; si no, desventura. Desde el inicio hacen falta disciplina y una causa justa.",
+"En medio del ejército: ventura, sin falta; el rey concede triple distinción. El jefe que comparte las penalidades de sus tropas recibe la confianza de arriba y de abajo.",
+"Quizás el ejército lleve cadáveres en el carro: desventura. El mando dividido o en manos incompetentes conduce a la derrota.",
+"El ejército se retira: no hay falta. Ante un enemigo superior, la retirada ordenada es lo acertado.",
+"Hay presa en el campo: conviene atraparla, sin falta. Que dirija el hermano mayor; si lo hacen los inexpertos, transportarán cadáveres. Defensa justa, conducida por quien tiene experiencia.",
+"El gran príncipe da órdenes, funda estados y reparte feudos: no hay que dar poder a hombres vulgares. Al repartir recompensas, se honra a los indignos con bienes, no con autoridad."]};
+
+H[8]={d:"La solidaridad trae ventura. Conviene consultar de nuevo el propio interior para ver si se tiene grandeza, constancia y perseverancia; entonces no hay falta. Los inseguros van llegando poco a poco; quien llega demasiado tarde encuentra desventura.",
+i:"Sobre la tierra está el agua, que se une a ella sin resquicios. Así los reyes antiguos fundaban estados y cultivaban relaciones de amistad con los príncipes.",
+l:["Mantente fiel y sincero: así la unión no tiene falta. La verdad, como un cuenco lleno, atrae al final una ventura que viene de fuera.",
+"Mantener la unión desde dentro: la perseverancia trae ventura. Responde a la llamada desde tu propia dignidad, sin rebajarte para agradar.",
+"Te unes con gente que no es la adecuada. Cuidado con intimar; se puede convivir guardando distancia interior.",
+"Mantener también hacia fuera la unión con quien está arriba: la perseverancia trae ventura. Muestra abiertamente tu lealtad a quien lo merece.",
+"Manifestación de la unión: en la cacería el rey deja una salida a las presas y no persigue a las que huyen; los ciudadanos no necesitan advertencias. La unión verdadera es voluntaria y no se fuerza.",
+"No encuentra cabeza para la unión: desventura. Quien deja pasar el momento de unirse se queda solo y se arrepiente."]};
+
+H[9]={d:"Lo pequeño domestica a lo grande y hay éxito, pero son densas nubes que aún no traen lluvia. Lo débil solo puede contener a lo fuerte por un tiempo y con suavidad; la influencia se ejerce con persuasión amable, no con fuerza.",
+i:"El viento recorre el cielo, sin dar todavía forma a las nubes. Así el noble refina las formas exteriores de su ser en espera de mayor influencia.",
+l:["Regresa a su propio camino: ¿qué falta podría haber? Ventura. Si el avance encuentra obstáculo, vuelve libremente a tu camino sin forzar.",
+"Se deja arrastrar al regreso: ventura. Al ver que otros retroceden con sensatez, acompañarles evita exponerse en vano.",
+"Al carro se le salen los radios; marido y mujer se miran con rencor. Forzar el avance cuando las circunstancias lo frenan provoca discordia y pérdida de dignidad.",
+"Si eres sincero, se aleja la sangre y cede el temor: no hay falta. La veracidad permite aconsejar al poderoso sin caer en peligro.",
+"Si eres sincero y leal, tu vecino te enriquece. La lealtad mutua hace que la fuerza compartida beneficie a ambos.",
+"Llega la lluvia y llega el descanso: la virtud acumulada da su fruto. Pero logrado el éxito no conviene seguir empujando; la luna está casi llena y quien insiste encuentra desventura."]};
+
+H[10]={d:"Pisar la cola del tigre sin que muerda: éxito. Lo débil camina detrás de lo fuerte, y el trato correcto y amable desarma incluso al poderoso.",
+i:"Arriba el cielo, abajo el lago: cada cosa en su nivel. Así el noble distingue entre lo alto y lo bajo y con ello afianza el sentir del pueblo.",
+l:["Un porte sencillo: avanzar no tiene falta. Ir por el propio camino sin pretensiones, libre de ambición, es seguro.",
+"Pisar un camino llano y tranquilo: el hombre retirado y solitario encuentra ventura en su perseverancia. Quien no exige nada del mundo camina sin tropiezos.",
+"El tuerto cree ver, el cojo cree andar; pisa la cola del tigre y este le muerde: desventura. Sobreestimar las propias fuerzas lleva al desastre; solo es justificable al servicio de una causa mayor.",
+"Pisa la cola del tigre con cautela y circunspección: al final ventura. La empresa es peligrosa, pero la prudencia la lleva a buen fin.",
+"Porte resuelto: perseverar, con conciencia del peligro. Hay que avanzar con decisión sin olvidar el riesgo que se corre.",
+"Contempla tu andar y examina sus señales: si el ciclo es completo, elevada ventura. Al final del camino se juzga por los frutos que ha dado la conducta."]};
+
+H[11]={d:"Lo pequeño se va y llega lo grande: ventura y éxito. Cielo y tierra se unen; lo luminoso está dentro y lo oscuro fuera, y todo florece en armonía.",
+i:"Cielo y tierra se unen: imagen de la paz. Así el soberano ordena y completa el curso del cielo y de la tierra, y administra sus dones para ayudar al pueblo.",
+l:["Al arrancar la hierba sale con ella el césped, pues las raíces están unidas: cada uno según su especie. Emprender trae ventura; quien avanza arrastra consigo a los afines.",
+"Soportar a los incultos con benevolencia, cruzar el río con decisión, no olvidar lo lejano ni favorecer a los compañeros: así se anda el camino del medio.",
+"No hay llanura sin cuesta ni ida sin vuelta; quien se mantiene firme en el peligro no comete falta. No te lamentes de esta verdad y disfruta la dicha presente.",
+"Desciende revoloteando, sin presumir de su riqueza, junto a su vecino, con sinceridad y sin recelo. Los de arriba se acercan sinceramente a los de abajo.",
+"El soberano I da a su hija en matrimonio: bendición y elevada ventura. La alta posición se une con humildad a la baja.",
+"La muralla vuelve a caer en el foso. No uses ejércitos; ordena solo en tu propia ciudad; insistir trae humillación. Se acerca el fin de la paz: no resistas, recógete."]};
+
+H[12]={d:"Gente indigna obstaculiza la perseverancia del noble: lo grande se va y llega lo pequeño. Cielo y tierra no se comunican y el noble se repliega en su valor interior, sin dejarse corromper.",
+i:"Cielo y tierra no se unen: imagen del estancamiento. Así el noble se retira a su valor interior para escapar de la dificultad y no se deja honrar con ganancias.",
+l:["Al arrancar la hierba sale con ella el césped: cada uno según su especie. La perseverancia trae ventura y éxito; retírate junto con los afines.",
+"Soportan y halagan: ventura para los vulgares. El gran hombre, en cambio, atraviesa el estancamiento sin mezclarse con ellos y así obtiene éxito.",
+"Soportan la vergüenza. Quienes subieron indebidamente empiezan a avergonzarse en su interior: es el inicio del cambio.",
+"Quien actúa por mandato superior no comete falta y los compañeros comparten la bendición. El tiempo empieza a cambiar; actúa con legitimidad.",
+"El estancamiento cede: ventura para el gran hombre. Pero conviene repetirse «¿y si fracasa?» y atarse firme, como a una morera: cautela en el momento del cambio.",
+"El estancamiento termina: primero estancamiento, después dicha. Hay que contribuir activamente a terminarlo, pues no se acaba solo."]};
+
+H[13]={d:"Comunidad con los hombres al aire libre: éxito. Es propicio atravesar las grandes aguas y conviene la perseverancia del noble. La unión verdadera se basa en metas universales, abiertas a todos, y no en intereses privados.",
+i:"El cielo junto con el fuego, que sube hacia él. Así el noble organiza a las personas según sus clanes y distingue las cosas según su naturaleza.",
+l:["Comunidad con los hombres en la puerta: no hay falta. El comienzo es abierto a todos y sin secretos.",
+"Comunidad con los hombres en el clan: humillación. Los grupos cerrados por intereses parciales traen vergüenza.",
+"Esconde armas en la maleza y sube a la colina alta; en tres años no se levanta. La desconfianza y las emboscadas alejan cada vez más la comunidad.",
+"Sube a su muralla, pero no puede atacar: ventura. Reconocer que la lucha es inútil y volver al camino recto trae dicha.",
+"Los hombres unidos primero lloran y se lamentan, después ríen: tras grandes luchas logran encontrarse. Los corazones unidos superan cualquier obstáculo.",
+"Comunidad con los hombres en la pradera: sin arrepentimiento. Una comunidad lejana, que no alcanza la unión plena, pero tampoco tiene culpa."]};
+
+H[14]={d:"La posesión de lo grande trae elevado éxito. La fuerza y la claridad se unen; la riqueza se mantiene cuando se lleva con modestia y bondad.",
+i:"El fuego en lo alto del cielo ilumina todas las cosas. Así el noble reprime el mal y fomenta el bien, obedeciendo la voluntad benévola del cielo.",
+l:["Ninguna relación con lo dañino: no hay falta. Si eres consciente de las dificultades que trae la abundancia, permanecerás libre de culpa.",
+"Un gran carro para cargar: se puede emprender algo, sin falta. Hay recursos y colaboradores capaces para llevar la carga.",
+"Un príncipe ofrece su riqueza al Hijo del Cielo; un hombre mezquino no sería capaz. Pon tu riqueza al servicio del conjunto y no la retengas para ti.",
+"Marca la diferencia entre él y su vecino: no hay falta. No competir con los poderosos ni envidiarlos preserva la propia posición.",
+"Su sinceridad es accesible y a la vez digna: ventura. La afabilidad necesita dignidad para no ser tomada a la ligera.",
+"Bendecido por el cielo: ventura, nada que no sea propicio. Quien en la plenitud permanece humilde recibe ayuda de lo alto."]};
+
+H[15]={d:"La modestia trae éxito: el noble lleva las cosas a término. La ley del cielo vacía lo que está lleno y colma lo modesto; quien no se exalta llega más lejos.",
+i:"En medio de la tierra hay una montaña: lo alto se oculta en lo bajo. Así el noble reduce lo excesivo y aumenta lo escaso, sopesa las cosas y las equilibra.",
+l:["Un noble modesto en su modestia puede atravesar las grandes aguas: ventura. La sencillez sin pretensiones facilita incluso las empresas difíciles.",
+"Modestia que se manifiesta: la perseverancia trae ventura. Lo que se lleva dentro se expresa de modo natural y es reconocido.",
+"Un noble modesto y con méritos lleva las cosas a término: ventura. El mérito real, sin presunción, gana el apoyo de todos.",
+"Nada que no sea propicio para la modestia en movimiento. Pero la modestia no debe servir de excusa para la pasividad: hay que actuar.",
+"No presumir de riqueza ante el vecino; conviene atacar con energía: nada que no sea propicio. La modestia no excluye la firmeza cuando hace falta.",
+"Modestia que se manifiesta: conviene poner en marcha los ejércitos, pero solo para poner orden en la propia ciudad. La verdadera modestia se disciplina a sí misma."]};
+
+H[16]={d:"El entusiasmo hace propicio designar ayudantes y poner en marcha ejércitos. Es un movimiento que encuentra devoción: el líder que sintoniza con el sentir de la gente la mueve sin esfuerzo.",
+i:"El trueno brota estruendoso de la tierra. Así los reyes antiguos hacían música para honrar los méritos y la ofrecían al Señor Supremo, invitando a los antepasados.",
+l:["Entusiasmo que se proclama: desventura. Jactarse de las propias relaciones con los poderosos atrae la desgracia.",
+"Firme como una roca, sin esperar todo el día: la perseverancia trae ventura. Quien reconoce los primeros indicios no se deja arrastrar por la euforia general.",
+"Entusiasmo que mira hacia arriba esperando señales trae arrepentimiento, y la vacilación también. Hay que actuar a tiempo por uno mismo.",
+"Fuente del entusiasmo: se logran grandes cosas. No dudes: los amigos se reúnen a tu alrededor como el cabello en la horquilla; el líder seguro y sincero lo une todo.",
+"Persistentemente enfermo, pero no muere. Una presión constante impide el entusiasmo, aunque precisamente eso evita también caer en la complacencia.",
+"Entusiasmo ofuscado: pero si, después de lograrlo, uno cambia, no hay falta. Despertar a tiempo de la embriaguez permite rectificar."]};
+
+H[17]={d:"El seguimiento tiene elevado éxito; conviene la perseverancia y no hay falta. Para ser seguido hay que saber adaptarse primero a lo que el tiempo exige, sin perder la rectitud.",
+i:"En medio del lago está el trueno, recogido en reposo. Así el noble, al caer la tarde, se retira a descansar y recobrar fuerzas.",
+l:["La norma cambia: la perseverancia trae ventura. Salir por la puerta y tratar con otros da fruto; ábrete a otros puntos de vista sin perder tu centro.",
+"Quien se aferra al muchachito pierde al hombre fuerte. Hay que elegir bien a quién seguir: lo pequeño y cómodo aparta de lo valioso.",
+"Quien se aferra al hombre fuerte pierde al muchachito: en el seguimiento se encuentra lo que se busca; conviene perseverar. Renunciar a lo inferior permite crecer.",
+"El seguimiento trae éxito, pero insistir en él trae desventura. Si se camina con sinceridad por el camino recto, hay claridad: cuidado con los aduladores.",
+"Sincero en lo bueno: ventura. Seguir lo bello y lo verdadero con convicción da buen resultado.",
+"Firmemente unido, y aún más atado: el rey le presenta ante la montaña del oeste. El sabio retirado regresa para guiar a otros por un vínculo que no se rompe."]};
+
+H[18]={d:"El trabajo en lo echado a perder tiene elevado éxito y es propicio atravesar las grandes aguas. Antes del comienzo, tres días; después, tres días: lo que se ha corrompido por negligencia puede enderezarse con reflexión antes de actuar y vigilancia después.",
+i:"Al pie de la montaña sopla el viento y todo se remueve. Así el noble sacude a la gente y fortalece su espíritu.",
+l:["Corregir lo que el padre echó a perder: si hay un hijo así, el padre queda libre de culpa; hay peligro, al final ventura. Se renueva una tradición endurecida, con cuidado.",
+"Corregir lo que la madre echó a perder: no hay que ser demasiado tajante. Los errores nacidos de la debilidad se corrigen con suavidad.",
+"Corregir lo que el padre echó a perder: algo de arrepentimiento, pero ninguna gran falta. Un poco de exceso de energía, mejor que la inacción.",
+"Tolerar lo que el padre echó a perder: si se sigue así, humillación. La blandura ante los errores los agrava.",
+"Corregir lo que el padre echó a perder: se obtiene alabanza. Con buenos colaboradores, la reforma es reconocida.",
+"No sirve a reyes ni príncipes y se propone metas más elevadas. Retirarse del mundo para trabajar en uno mismo es legítimo cuando se hace por valores superiores."]};
+
+H[19]={d:"El acercamiento tiene elevado éxito y conviene la perseverancia, pero al llegar el octavo mes habrá desventura. Es la primavera que se acerca: hay que aprovecharla sabiendo que todo declive llegará y previniéndolo.",
+i:"Sobre el lago está la tierra, que lo bordea y contempla. Así el noble es inagotable en enseñar y en cuidar, y no pone límites a su apoyo al pueblo.",
+l:["Acercamiento conjunto: la perseverancia trae ventura. Lo bueno empieza a encontrar eco arriba; no te dejes arrastrar y sigue en lo recto.",
+"Acercamiento conjunto: ventura, todo es propicio. Quien no teme la caducidad, sabiendo que todo pasa, actúa con confianza.",
+"Acercamiento cómodo: nada es propicio. Pero si uno se apena de ello y se corrige, no hay falta.",
+"Acercamiento completo: no hay falta. Quien está arriba se abre a los capaces sin prejuicios.",
+"Acercamiento sabio, digno de un gran príncipe: ventura. Elegir bien a los colaboradores y dejarles hacer es sabiduría de gobierno.",
+"Acercamiento magnánimo: ventura, sin falta. El sabio que había dejado el mundo vuelve para ayudar y enseñar."]};
+
+H[20]={d:"La contemplación: se ha hecho la ablución pero aún no la ofrenda; llenos de confianza, todos alzan la vista hacia él. El recogimiento interior sincero inspira respeto sin necesidad de palabras.",
+i:"El viento sopla sobre la tierra y lo recorre todo. Así los reyes antiguos visitaban las regiones, contemplaban al pueblo y le daban enseñanza.",
+l:["Contemplación pueril: para el hombre vulgar no es falta, para el noble es humillación. Mirar sin comprender el sentido de lo que se ve.",
+"Contemplación por la rendija de la puerta: propicia para quien vive en un ámbito reducido. Una visión limitada y subjetiva no basta para quien tiene responsabilidades.",
+"La contemplación de mi propia vida decide si avanzo o retrocedo. El examen de uno mismo indica el siguiente paso.",
+"Contempla la luz del reino: conviene ser huésped del rey. Quien comprende la situación puede aconsejar a quien gobierna.",
+"Contemplar mi vida: el noble no tiene falta. Examina el efecto de tus actos sobre los demás.",
+"Contemplar su vida: el noble no tiene falta. Mirar con desapego, libre de los intereses del yo, es la sabiduría más alta."]};
+
+H[21]={d:"La mordedura tajante tiene éxito; conviene administrar justicia. Un obstáculo impide que las cosas se unan; hay que morderlo con energía, con claridad y firmeza a la vez.",
+i:"Trueno y relámpago. Así los reyes antiguos afianzaban las leyes mediante penas claramente definidas.",
+l:["Los pies metidos en el cepo hasta esconder los dedos: no hay falta. Un castigo leve a la primera falta basta para corregir.",
+"Muerde la carne tierna hasta hundir la nariz: no hay falta. Hay algo de exceso de celo, justificado por la dureza del culpable.",
+"Muerde carne seca y encuentra algo venenoso: pequeña humillación, sin falta. Sin autoridad suficiente, castigar despierta resentimiento.",
+"Muerde carne seca pegada al hueso y obtiene flechas de metal; conviene ser consciente de la dificultad y perseverar: ventura. El obstáculo es grande; hacen falta firmeza y rectitud.",
+"Muerde carne magra seca y obtiene oro amarillo; perseverando con conciencia del peligro, no hay falta. Hay que juzgar con imparcialidad, sabiendo lo delicado de la tarea.",
+"El cuello metido en la canga hasta esconder las orejas: desventura. Quien es sordo a todas las advertencias resulta incorregible."]};
+
+H[22]={d:"La gracia tiene éxito, pero en lo pequeño es propicio emprender algo. La belleza adorna y alegra, pero no es lo esencial; sirve para asuntos menores, no para decidir los grandes.",
+i:"Fuego al pie de la montaña, que la ilumina. Así el noble aclara los asuntos corrientes, pero no se atreve a resolver así las cuestiones graves.",
+l:["Adorna los dedos de los pies, deja el carro y va a pie. Quien empieza con humildad renuncia a comodidades que no le corresponden.",
+"Adorna la barba. La forma no tiene valor por sí sola; solo sirve si acompaña a un contenido.",
+"Gracioso y húmedo: la perseverancia constante trae ventura. No hay que dejarse adormecer por el bienestar y la comodidad.",
+"Gracia o sencillez: llega volando un caballo blanco; no es un bandido, viene a cortejar. Preferir la sencillez y la amistad sincera a la apariencia.",
+"Gracia en colinas y jardines; el rollo de seda es pobre y escaso: humillación, pero al final ventura. Lo que cuenta es la sinceridad, no la riqueza de la ofrenda.",
+"Gracia blanca, sencilla: no hay falta. La forma más elevada es la sencillez sin adorno."]};
+
+H[23]={d:"La desintegración: no es propicio ir a ninguna parte. Lo oscuro avanza y socava lo luminoso; el noble se somete al tiempo, aguarda en calma y no actúa.",
+i:"La montaña reposa sobre la tierra que la sostiene. Así los de arriba solo afianzan su posición siendo generosos con los de abajo.",
+l:["Se rompe la pata de la cama: se destruye a los perseverantes; desventura. Las calumnias empiezan a socavar desde abajo; solo cabe esperar.",
+"Se rompe el borde de la cama: se destruye a los perseverantes; desventura. El peligro se acerca y uno está aislado; prudencia extrema.",
+"Él rompe con ellos: no hay falta. Unirse a lo superior aunque implique separarse del propio entorno.",
+"Se rompe la cama hasta la piel: desventura. El daño ya alcanza a la persona misma.",
+"Un banco de peces: favor a través de las damas de palacio; todo es propicio. Lo inferior se somete voluntariamente a lo luminoso y el mal se vuelve bien.",
+"Un gran fruto queda sin comer: el noble recibe un carruaje, la casa del vulgar se derrumba. El mal se destruye a sí mismo; lo bueno sobrevive como semilla de lo nuevo."]};
+
+H[24]={d:"El retorno trae éxito: salir y entrar sin daño, vienen amigos sin falta; el camino va y vuelve, y al séptimo día llega el retorno. Conviene tener adónde ir. Tras la oscuridad, la luz vuelve por sí misma; no hay que forzarla.",
+i:"El trueno dentro de la tierra. Así los reyes antiguos cerraban los pasos en el solsticio, los mercaderes no viajaban y el soberano no recorría las regiones: reposo para que crezca la fuerza nueva.",
+l:["Retorno desde poca distancia: no hace falta arrepentirse; elevada ventura. Corregir pronto, cuando apenas se ha desviado uno, es lo mejor.",
+"Retorno tranquilo: ventura. Seguir el buen ejemplo de otros facilita el regreso.",
+"Retorno repetido: peligro, pero no falta. La inconstancia trae recaídas, pero mientras uno vuelva no hay culpa.",
+"Caminando en medio de otros, vuelve solo. Separarse de la compañía para seguir el bien.",
+"Retorno magnánimo: sin arrepentimiento. Reconocer los propios errores con nobleza.",
+"Retorno extraviado: desventura, desgracia desde dentro y desde fuera. Si se envían ejércitos, derrota durante diez años: quien pierde el momento de rectificar paga un alto precio."]};
+
+H[25]={d:"La inocencia tiene elevado éxito y conviene la perseverancia. Quien no es recto tiene desgracia y no le conviene emprender nada. Actuar con naturalidad, sin cálculo ni segundas intenciones, en armonía con el cielo.",
+i:"Bajo el cielo retumba el trueno y todas las cosas recobran su inocencia natural. Así los reyes antiguos, ricos en virtud, cuidaban a todos los seres en armonía con las estaciones.",
+l:["Conducta inocente: ventura. Seguir el impulso limpio del corazón es seguro.",
+"No pensar en la cosecha al arar, ni en el campo cultivado al desbrozar: conviene emprender algo. Hacer lo que toca sin pensar en el resultado.",
+"Desgracia inmerecida: la vaca atada es ganancia del caminante y pérdida del vecino. Hay infortunios imprevistos que no dependen de la propia culpa.",
+"Puede perseverar: no hay falta. Lo verdaderamente tuyo no se pierde aunque lo regales.",
+"Enfermedad que no viene por culpa propia: no uses remedios, pasará por sí sola. No hay que intervenir desde fuera en lo que se resolverá solo.",
+"Acción inocente trae desgracia: nada es propicio. Cuando no es el momento, incluso la buena intención debe esperar."]};
+
+H[26]={d:"La fuerza domesticadora de lo grande: conviene la perseverancia; no comer en casa trae ventura; es propicio atravesar las grandes aguas. Se acumula y contiene una gran fuerza creadora, renovando el carácter día a día, para ponerla luego al servicio de los demás.",
+i:"El cielo en medio de la montaña: tesoros ocultos. Así el noble se familiariza con las palabras y los hechos del pasado para fortalecer su carácter.",
+l:["Hay peligro: conviene detenerse. Te frena una fuerza superior; no la fuerces y espera.",
+"Al carro se le quitan los ejes. Acepta la contención con serenidad y espera a que cambie la situación.",
+"Un buen caballo sigue a otros; conciencia del peligro y perseverancia; ejercitarse a diario en la conducción y la defensa: conviene ir a alguna parte. El camino se abre, pero con cautela y preparación.",
+"La tablilla protectora sobre los cuernos del ternero: elevada ventura. Prevenir la fuerza salvaje antes de que se desarrolle es lo más fácil.",
+"Los colmillos de un jabalí castrado: ventura. Atacar la raíz del impulso desbocado, no sus síntomas.",
+"Se alcanza el camino del cielo: éxito. La contención termina y la fuerza acumulada se despliega libremente."]};
+
+H[27]={d:"Las comisuras de la boca: la perseverancia trae ventura. Fíjate en cómo cuida alguien a los demás y en qué busca para llenar su propia boca: por lo que nutre y por cómo se nutre se conoce a una persona.",
+i:"Al pie de la montaña está el trueno, que despierta la vida. Así el noble cuida sus palabras y es moderado en el comer y el beber.",
+l:["Dejas ir tu tortuga mágica y me miras con la boca caída: desventura. Envidiar a otros renunciando a la propia autonomía trae desprecio.",
+"Busca alimento en la cima y se aparta del camino para buscarlo en la colina: seguir así trae desventura. Depender indignamente de otros debilita.",
+"Se aparta de la verdadera nutrición: la perseverancia trae desventura; diez años sin actuar. Los placeres que no sacian nada conducen al vacío.",
+"Buscar alimento en lo alto trae ventura; acechar como el tigre con ávido deseo: no hay falta. Buscar colaboradores para el bien común es legítimo.",
+"Se aparta del camino: perseverar trae ventura, pero no conviene atravesar las grandes aguas. Consciente de su insuficiencia, se apoya en alguien sabio.",
+"Fuente de la nutrición: con conciencia del peligro, ventura; conviene atravesar las grandes aguas. El sabio que nutre a otros carga con una gran responsabilidad."]};
+
+H[28]={d:"La preponderancia de lo grande: la viga maestra se curva bajo el peso; conviene tener adónde ir; éxito. Es un tiempo excepcional que pide medidas extraordinarias, pero aplicadas con suavidad y comprensión.",
+i:"El lago cubre los árboles. Así el noble, cuando está solo, no tiene miedo, y si debe renunciar al mundo, no se desalienta.",
+l:["Extender juncos blancos debajo: no hay falta. Precaución extrema al comenzar algo extraordinario.",
+"Un álamo seco echa brotes en la raíz; un hombre mayor toma una esposa joven: todo es propicio. Renovación por la unión con lo humilde y lo nuevo.",
+"La viga maestra se dobla hasta romperse: desventura. La testarudez que rechaza toda ayuda acaba en derrumbe.",
+"La viga maestra se refuerza: ventura. Pero si hay segundas intenciones, humillación; no abuses del apoyo de abajo.",
+"Un álamo seco da flores; una mujer mayor toma un marido joven: ni culpa ni elogio. Una unión que no renueva la raíz es estéril.",
+"Hay que vadear el agua y se hunde la cabeza: desventura, pero sin falta. Hay sacrificios que se hacen por un fin noble aunque cuesten caro."]};
+
+H[29]={d:"Lo abismal repetido. Si eres veraz, tu corazón tiene éxito y tu acción alcanza logro. Como el agua que fluye sin perder su naturaleza ni detenerse ante ningún obstáculo, en el peligro hay que mantener la sinceridad y seguir adelante.",
+i:"El agua fluye sin cesar y llega a su meta: imagen de lo abismal repetido. Así el noble mantiene una virtud constante y ejercita la enseñanza.",
+l:["Abismo repetido: en el abismo uno cae en un hoyo; desventura. Acostumbrarse al mal hasta perder el camino.",
+"El abismo es peligroso: solo hay que intentar alcanzar cosas pequeñas. No se puede salir de golpe; avanza poco a poco.",
+"Adelante y atrás, abismo tras abismo: en semejante peligro, detente y espera, o caerás más hondo. No actúes todavía.",
+"Un jarro de vino, un cuenco de arroz, vasijas de barro, entregados sencillamente por la ventana: al final no hay falta. En tiempos de peligro basta la sinceridad sencilla, sin ceremonias.",
+"El abismo no se desborda; solo se llena hasta el borde: no hay falta. No busques grandes cosas; basta con salir del peligro.",
+"Atado con cuerdas y sogas, encerrado entre muros de espino; tres años sin encontrar el camino: desventura. Quien pierde el rumbo queda atrapado."]};
+
+H[30]={d:"Lo adherente: la perseverancia es propicia y trae éxito; cuidar la vaca trae ventura. La claridad necesita algo a lo que adherirse, como la llama a la madera; reconocer esa dependencia con docilidad da luz duradera.",
+i:"La claridad se eleva dos veces: imagen del fuego. Así el gran hombre, perpetuando su claridad, ilumina las cuatro regiones del mundo.",
+l:["Pasos confusos al empezar: si se toman con seriedad, no hay falta. Al comienzo del día conviene el recogimiento para no dispersarse.",
+"Luz amarilla: elevada ventura. La claridad mesurada del mediodía, el equilibrio del centro.",
+"A la luz del sol poniente unos golpean la olla y cantan, otros se lamentan de la vejez: desventura. Hay que aceptar la caducidad con serenidad.",
+"Llega de repente, arde, se extingue y es desechado. El fuego de paja se consume tan rápido como se enciende.",
+"Lágrimas a raudales, suspiros y lamentos: ventura. Un cambio interior auténtico, nacido del dolor, transforma.",
+"El rey lo envía a combatir: lo mejor es abatir a los cabecillas y no castigar a los seguidores; no hay falta. Disciplina sin exceso."]};
+
+H[31]={d:"El influjo tiene éxito; conviene la perseverancia; tomar una esposa trae ventura. La atracción mutua nace cuando lo fuerte se pone por debajo de lo débil; la receptividad permite que el otro se acerque.",
+i:"Sobre la montaña hay un lago. Así el noble deja que los demás se le acerquen gracias a su receptividad.",
+l:["El influjo se manifiesta en el dedo gordo del pie. La intención existe, pero aún no se ve ni tiene efecto.",
+"El influjo se manifiesta en las pantorrillas: desventura; quedarse quieto trae ventura. No actúes por impulso antes de tiempo.",
+"El influjo se manifiesta en los muslos; se aferra a lo que sigue: continuar trae humillación. Dejarse llevar por cada capricho es indigno.",
+"La perseverancia trae ventura y desaparece el arrepentimiento. Si te agitas de aquí para allá, solo te seguirán los amigos cercanos: el influjo verdadero brota sereno del corazón.",
+"El influjo se manifiesta en la nuca: sin arrepentimiento. Una firmeza que no se deja influir tampoco influye en los demás.",
+"El influjo se manifiesta en mandíbulas, mejillas y lengua. Las palabras vacías no tienen verdadera fuerza."]};
+
+H[32]={d:"La duración tiene éxito, sin falta; conviene la perseverancia y conviene tener adónde ir. Durar no es quedarse inmóvil, sino renovarse continuamente según la propia ley, como el ciclo de las estaciones.",
+i:"Trueno y viento, siempre juntos. Así el noble se mantiene firme y no cambia de dirección.",
+l:["Querer duración demasiado pronto: la perseverancia trae desventura, nada es propicio. Lo duradero se construye despacio.",
+"Desaparece el arrepentimiento. La fuerza interior se mantiene en el centro y no se excede.",
+"Quien no da duración a su carácter cae en la deshonra; la perseverancia trae humillación. La inconstancia ante los humores ajenos deshace al hombre.",
+"No hay caza en el campo. Buscar en el lugar equivocado no da fruto por mucho que se insista.",
+"Dar duración al carácter mediante la perseverancia: ventura para la mujer, desventura para el hombre. La fidelidad que sigue sin más es buena para quien sigue, pero quien guía debe adaptarse a lo que el deber exige.",
+"Inquietud duradera: desventura. La agitación constante impide toda serenidad y toda obra."]};
+
+H[33]={d:"La retirada tiene éxito; en lo pequeño conviene la perseverancia. Cuando las fuerzas oscuras avanzan, retirarse a tiempo no es huida sino fuerza: se preserva lo esencial para poder volver.",
+i:"Bajo el cielo está la montaña. Así el noble mantiene a distancia al hombre vulgar, sin enojo pero con mesura.",
+l:["En la retirada, en la cola: peligro; no hay que emprender nada. Si te has quedado atrás, quédate quieto.",
+"Lo sujeta con cuero de buey amarillo; nadie puede soltarlo. Quien está firmemente unido a lo recto no se deja arrancar de su meta.",
+"Retirada detenida: angustia y peligro. Tener a sirvientes y criadas trae ventura: si otros te retienen, trátalos con amabilidad, pero no les confíes lo grande.",
+"Retirada voluntaria: ventura para el noble, ruina para el vulgar. Retirarse con cortesía y sin rencor solo es posible para quien tiene fuerza interior.",
+"Retirada amistosa: la perseverancia trae ventura. Se reconoce el momento justo y uno se mantiene firme en su decisión.",
+"Retirada jovial: todo es propicio. Libre de dudas y de ataduras, la retirada se hace con alegría."]};
+
+H[34]={d:"El poder de lo grande: conviene la perseverancia. Una gran fuerza solo es verdaderamente grande cuando va unida a la justicia y no se impone sin más.",
+i:"El trueno en lo alto del cielo. Así el noble no pisa caminos que no correspondan al orden.",
+l:["Poder en los dedos de los pies: avanzar trae desventura, sin duda. Querer imponerse por la fuerza desde abajo conduce al fracaso.",
+"La perseverancia trae ventura. Cuando el éxito empieza a llegar, hay que moderarse.",
+"El vulgar usa su poder, el noble no; la perseverancia es peligrosa. El macho cabrío embiste el seto y se le enredan los cuernos: la fuerza bruta se atrapa a sí misma.",
+"La perseverancia trae ventura y desaparece el arrepentimiento; el seto se abre y ya no hay enredo; el poder está en el eje de un gran carro. El trabajo callado y constante abre el camino.",
+"Pierde el carnero con facilidad: sin arrepentimiento. Abandonar la terquedad cuando ya no hay resistencia.",
+"El macho cabrío embiste el seto y no puede retroceder ni avanzar: nada es propicio. Si toma conciencia de la dificultad, habrá ventura."]};
+
+H[35]={d:"El progreso: el príncipe poderoso es honrado con muchos caballos y recibido tres veces en un día. El progreso es rápido y luminoso cuando quien sirve es leal y quien gobierna sabe reconocerlo.",
+i:"El sol se eleva sobre la tierra. Así el noble hace brillar por sí mismo su clara virtud.",
+l:["Progresando, pero rechazado: la perseverancia trae ventura. Si no te dan confianza, mantente sereno y generoso, y no habrá falta.",
+"Progresando, pero afligido: la perseverancia trae ventura. Recibe una gran dicha de su antepasada; los obstáculos para llegar a quien puede ayudarte se resolverán.",
+"Todos están de acuerdo: desaparece el arrepentimiento. El apoyo de los demás compensa lo que falta en uno mismo.",
+"Progresa como un hámster: la perseverancia es peligrosa. Acumular por medios turbios no resiste la luz.",
+"Desaparece el arrepentimiento: no tomes a pecho la ganancia ni la pérdida. Emprender trae ventura y todo es propicio para quien se desapega del resultado.",
+"Progresar con los cuernos solo sirve para poner orden en la propia ciudad: con conciencia del peligro, ventura, sin falta, aunque insistir trae humillación. El rigor se usa solo con lo propio."]};
+
+H[36]={d:"El oscurecimiento de la luz: conviene perseverar en la dificultad. La luz se ha hundido bajo la tierra; en tiempos oscuros hay que ocultar la propia claridad y mantenerse firme por dentro, dócil por fuera.",
+i:"La luz se ha hundido en la tierra. Así el noble convive con la multitud; vela su luz y, sin embargo, sigue brillando.",
+l:["Oscurecimiento de la luz durante el vuelo: baja las alas. El noble en viaje pasa tres días sin comer y el anfitrión murmura; seguir los propios principios tiene un precio.",
+"Oscurecimiento de la luz: herido en el muslo izquierdo, ayuda con la fuerza de un caballo; ventura. La herida no es mortal y aún puede salvar a otros.",
+"Oscurecimiento de la luz durante la caza en el sur: se captura al gran cabecilla. No hay que querer enderezarlo todo de golpe.",
+"Penetra en el lado izquierdo del vientre: alcanza el corazón del oscurecimiento y sale por la puerta. Comprender a fondo el mal permite apartarse a tiempo.",
+"Oscurecimiento de la luz como el del príncipe Chi: la perseverancia es propicia. Ocultar la luz por dentro, como quien finge locura, para sobrevivir sin traicionarse.",
+"No hay luz, sino oscuridad: primero subió al cielo, luego se hundió en la tierra. Lo oscuro, llegado a su cumbre, se destruye a sí mismo."]};
+
+H[37]={d:"El clan: conviene la perseverancia de la mujer. El orden de la familia, con cada uno en su lugar y unido por el afecto y la responsabilidad, es la base del orden de la sociedad.",
+i:"El viento sale del fuego: la influencia nace de dentro. Así el noble da sustancia a sus palabras y duración a su conducta.",
+l:["Reclusión firme dentro de la familia: desaparece el arrepentimiento. Las reglas claras desde el principio evitan problemas.",
+"No sigue caprichos; atiende la comida en el interior de la casa: la perseverancia trae ventura. Cuidar a los suyos es su tarea.",
+"Si los ánimos se encienden en la familia, el exceso de severidad trae arrepentimiento, pero ventura. Si mujer y niño ríen y bromean sin medida, al final humillación: mejor estricto que laxo.",
+"Ella es la riqueza de la casa: gran ventura. Una administración prudente da prosperidad a todos.",
+"Como un rey se acerca a su familia: no temáis, ventura. Se guía con amor y no con miedo.",
+"Su obra inspira confianza y respeto: al final ventura. El orden de la casa depende de la responsabilidad personal de quien la encabeza."]};
+
+H[38]={d:"El antagonismo: en lo pequeño, ventura. Cuando los caminos se separan no se puede emprender nada grande, pero sí dar pequeños pasos que acerquen; la oposición también enseña y complementa.",
+i:"Arriba el fuego, abajo el lago: cada uno va hacia su lado. Así el noble, aun en medio de la comunidad, conserva su propia singularidad.",
+l:["Desaparece el arrepentimiento. Si pierdes tu caballo, no corras tras él: volverá solo. Si te encuentras con gente mala, cuídate de cometer errores.",
+"Encuentra a su señor en una callejuela: no hay falta. Un encuentro casual e informal resuelve lo que la vía oficial no podía.",
+"Ve el carro arrastrado hacia atrás, los bueyes detenidos, el hombre con el pelo y la nariz cortados. No es un buen comienzo, pero sí un buen final si se mantiene la fidelidad.",
+"Aislado por el antagonismo, encuentra a una persona afín con quien tratar con sinceridad: peligro, pero sin falta.",
+"Desaparece el arrepentimiento: el compañero muerde a través del envoltorio. Ir hacia él, ¿qué falta podría haber? Reconocer al afín pese a las apariencias.",
+"Aislado, ve a su compañero como un cerdo cubierto de barro, un carro lleno de demonios; tensa el arco y luego lo baja: no es un bandido, viene a cortejar. Al ir, cae la lluvia y llega la ventura: la desconfianza se disuelve."]};
+
+H[39]={d:"El impedimento: es propicio el suroeste, no el noreste; conviene ver al gran hombre; la perseverancia trae ventura. Ante el obstáculo hay que detenerse, buscar aliados y volverse hacia uno mismo antes de seguir.",
+i:"Agua sobre la montaña. Así el noble se vuelve hacia su propia persona y cultiva su carácter.",
+l:["Ir lleva a obstáculos, volver trae elogio. Espera el momento oportuno.",
+"El servidor del rey choca con obstáculo tras obstáculo, pero no por culpa propia. Hay deberes que obligan a enfrentarse a la dificultad.",
+"Ir lleva a obstáculos, por eso regresa. Volver junto a los suyos, que lo necesitan.",
+"Ir lleva a obstáculos, volver lleva a la unión. Hay que reunir aliados antes de actuar.",
+"En medio de los mayores obstáculos llegan los amigos. Quien lucha por los demás atrae ayuda.",
+"Ir lleva a obstáculos, volver trae gran ventura; conviene ver al gran hombre. El sabio no puede desentenderse del mundo y su regreso ayuda a todos."]};
+
+H[40]={d:"La liberación: el suroeste es propicio. Si no queda nada por hacer, el regreso trae ventura; si aún queda algo, apresurarse trae ventura. Tras la tensión hay que volver pronto a la normalidad y resolver lo pendiente sin demora.",
+i:"Trueno y lluvia llegan y despejan el aire. Así el noble perdona los errores y es indulgente con las culpas.",
+l:["No hay falta. Tras la liberación conviene descansar en silencio.",
+"En la caza abate tres zorros y obtiene una flecha amarilla: la perseverancia trae ventura. Hay que eliminar a los aduladores con rectitud y mesura.",
+"Si uno lleva carga a la espalda y además va en carruaje, atrae a los ladrones: la perseverancia trae humillación. La ostentación de una posición que no corresponde invita al asalto.",
+"Libérate de tu dedo gordo del pie: entonces llegará el compañero en quien puedes confiar. Hay que soltar a los inferiores que se aferran a uno.",
+"Si el noble logra liberarse, ventura: así demuestra a los vulgares que va en serio. Desprenderse interiormente de lo inferior lo aleja.",
+"El príncipe dispara a un halcón posado en lo alto de una muralla y lo abate: todo es propicio. El último obstáculo se elimina con los medios preparados y en el momento justo."]};
+
+H[41]={d:"La merma, unida a la veracidad, trae elevada ventura y no hay falta; se puede perseverar y conviene emprender. ¿Cómo usarla? Dos pequeños cuencos bastan para la ofrenda: la sencillez sincera vale más que la ostentación.",
+i:"Al pie de la montaña está el lago. Así el noble refrena su ira y contiene sus impulsos.",
+l:["Acudir rápido cuando el propio trabajo está hecho no es falta, pero hay que sopesar cuánto puede uno darse sin perjudicarse.",
+"Conviene la perseverancia; emprender trae desventura. Sin mermarse a sí mismo, puede aumentar a otros: no hay que perder la dignidad al servir.",
+"Cuando tres caminan juntos, uno sobra; cuando uno camina solo, encuentra compañero. La intimidad verdadera es cosa de dos.",
+"Si disminuye sus defectos, el otro acude pronto y se alegra: no hay falta. Corregirse uno mismo abre la puerta a la amistad.",
+"Alguien lo aumenta: diez pares de tortugas no pueden oponerse; elevada ventura. El destino favorable no necesita buscarse.",
+"Aumentado sin mermar a nadie: no hay falta, la perseverancia trae ventura y conviene emprender. Se obtienen colaboradores, pero ya no un hogar propio: la ganancia se pone al servicio de todos."]};
+
+H[42]={d:"El aumento: conviene emprender algo y atravesar las grandes aguas. Lo de arriba se merma para aumentar lo de abajo; es un tiempo fértil que hay que aprovechar mientras dura.",
+i:"Viento y trueno se refuerzan mutuamente. Así el noble, cuando ve el bien, lo imita; y cuando tiene faltas, se libra de ellas.",
+l:["Conviene realizar grandes obras: elevada ventura, sin falta. La ayuda recibida debe usarse en una obra grande y desinteresada.",
+"Alguien lo aumenta: diez pares de tortugas no pueden oponerse; la perseverancia constante trae ventura. El rey lo presenta ante Dios: ventura que nace de la armonía con lo alto.",
+"Se es enriquecido incluso por sucesos desafortunados: no hay falta si eres veraz, caminas por el medio e informas al príncipe con tu sello. Hasta la desgracia puede aumentar a quien actúa con rectitud.",
+"Si caminas por el medio e informas al príncipe, te seguirá. Es propicio servir de mediador, incluso para trasladar la capital.",
+"Si eres veraz y tienes un corazón bondadoso, no preguntes: elevada ventura. Todos reconocen la bondad verdadera.",
+"No aumenta a nadie, y alguien incluso lo golpea; no mantiene firme su corazón: desventura. El egoísmo acaba aislando."]};
+
+H[43]={d:"El desbordamiento: hay que anunciar resueltamente el asunto en la corte del rey, con verdad y sabiendo que hay peligro. Hay que avisar a la propia ciudad; no conviene recurrir a las armas; conviene emprender. El mal se elimina no con violencia, sino nombrándolo con claridad y fortaleciendo el bien.",
+i:"El lago ha subido hasta el cielo y amenaza desbordarse. Así el noble reparte su riqueza hacia abajo y no se apoya en su propio mérito.",
+l:["Poderoso en los dedos de los pies que avanzan: al ir no se está a la altura y se comete falta. La precipitación al comienzo lleva al fracaso.",
+"Un grito de alarma; por la noche, armas, pero no hay que temer. La vigilancia constante protege del peligro.",
+"Poderoso en los pómulos: desventura. El noble está firmemente resuelto; camina solo bajo la lluvia, se moja y lo critican, pero no hay falta: puede parecer ligado al mal mientras se mantiene firme.",
+"No hay piel en sus muslos y anda con dificultad. Si se dejara guiar como una oveja, desaparecería el arrepentimiento, pero no creerá estas palabras: la obstinación le impide avanzar.",
+"Frente a la maleza, firme resolución: caminar por el medio no tiene falta. Combatir el mal cercano exige aún más decisión.",
+"Sin grito de alarma: al final, desventura. Los restos del mal que se dejan pasar por alto vuelven a crecer."]};
+
+H[44]={d:"Ir al encuentro: la muchacha es poderosa; no conviene casarse con ella. Lo oscuro reaparece sin ser llamado y no hay que dejarlo crecer; los encuentros fugaces de cielo y tierra son fértiles, pero lo inferior no debe dominar.",
+i:"Bajo el cielo está el viento. Así el príncipe difunde sus órdenes y las proclama en las cuatro regiones.",
+l:["Hay que frenarlo con un freno de bronce: la perseverancia trae ventura. Si se le deja seguir, desventura; un cerdo flaco tiende a revolverse: el mal debe atajarse al inicio.",
+"En el depósito hay un pez: no hay falta, pero no conviene para los huéspedes. Contener el mal con suavidad, sin dejar que se extienda.",
+"No hay piel en sus muslos y anda con dificultad; con conciencia del peligro, ninguna gran falta. Las circunstancias impiden caer en la tentación.",
+"En el depósito no hay pez: esto lleva a la desventura. Quien se aleja de la gente sencilla pierde su apoyo.",
+"Un melón cubierto con hojas de sauce: cualidades ocultas; entonces cae del cielo. La influencia callada y paciente da su fruto a su tiempo.",
+"Sale al encuentro con los cuernos: humillación, pero sin falta. Retirarse con orgullo del mundo trae críticas, pero no culpa."]};
+
+H[45]={d:"La reunión tiene éxito: el rey se acerca a su templo; conviene ver al gran hombre; la perseverancia trae éxito. Hacer grandes ofrendas trae ventura y conviene emprender. Las personas se congregan en torno a un centro común, que debe ser recto y fuerte.",
+i:"El lago se ha elevado sobre la tierra. Así el noble renueva sus armas para hacer frente a lo imprevisto.",
+l:["Si eres sincero pero no hasta el final, habrá a veces confusión y a veces reunión. Si llamas, un apretón de manos te devolverá la risa: no te aflijas, ir no tiene falta.",
+"Dejarse atraer trae ventura, sin falta. Si eres sincero, basta con una ofrenda pequeña.",
+"Reunión entre suspiros: nada es propicio. Ir no tiene falta, solo una pequeña humillación; unirse aunque sea tarde es mejor que quedarse fuera.",
+"Gran ventura, sin falta. Reunir a la gente en nombre de quien gobierna, no para uno mismo.",
+"Si en la reunión se ocupa una posición, no hay falta. Si algunos aún no confían, hace falta perseverancia elevada y constante; así desaparece el arrepentimiento.",
+"Lamentos y suspiros, lágrimas: no hay falta. Ser malinterpretado duele, pero la sinceridad acaba siendo reconocida."]};
+
+H[46]={d:"La subida tiene elevado éxito: conviene ver al gran hombre; no hay que temer; partir hacia el sur trae ventura. Como la planta que crece desde la tierra, se asciende con esfuerzo constante y adaptándose a los obstáculos.",
+i:"En medio de la tierra crece la madera. Así el noble, con dedicación, acumula pequeñas cosas hasta alcanzar lo alto y grande.",
+l:["Una subida que encuentra confianza: gran ventura. Desde abajo, el apoyo de los de arriba impulsa el ascenso.",
+"Si eres sincero, basta una pequeña ofrenda: no hay falta. La sinceridad suple la falta de formas.",
+"Sube a una ciudad vacía. No hay obstáculos; avanza sin hacerte preguntas inútiles.",
+"El rey le hace ofrenda en el monte Ch'i: ventura, sin falta. Llega el reconocimiento y la entrada en un círculo más alto.",
+"La perseverancia trae ventura: se sube peldaño a peldaño. No hay que saltarse etapas.",
+"Subida a ciegas: conviene perseverar sin descanso. Avanzar sin pausa solo es bueno si se hace con plena conciencia."]};
+
+H[47]={d:"La desazón: éxito; perseverancia; el gran hombre trae ventura y no hay falta. Cuando uno tiene algo que decir, no le creen. En tiempos de agotamiento, el noble conserva el ánimo y no se deja quebrar; habla poco y actúa con fuerza interior.",
+i:"El lago sin agua: imagen del agotamiento. Así el noble arriesga incluso su vida para cumplir su voluntad.",
+l:["Se sienta afligido bajo un árbol desnudo y se pierde en un valle sombrío; tres años sin ver a nadie. El pesimismo agrava la situación.",
+"Afligido en medio del vino y la comida, llega el hombre de las rodilleras púrpura: conviene hacer ofrenda; partir trae desventura, pero no hay falta. Agotamiento interior en medio de la abundancia; paciencia y recogimiento.",
+"Se deja oprimir por la piedra y se apoya en espinos; entra en su casa y no ve a su mujer: desventura. La inquietud que choca con todo pierde lo que más quiere.",
+"Llega muy despacio, afligido en un carruaje dorado: humillación, pero se llega al final. El deseo de ayudar se ve frenado por los ricos, pero acabará cumpliéndose.",
+"Le cortan la nariz y los pies, afligido por el de las rodilleras púrpura; la alegría llega poco a poco. Conviene la ofrenda: el recogimiento interior trae lo que la acción no puede.",
+"Afligido por enredaderas, vacila y se dice: «Si me muevo, me arrepentiré». Si se arrepiente de verdad y cambia de actitud, avanzar trae ventura."]};
+
+H[48]={d:"El pozo: se puede cambiar de ciudad, pero no el pozo; ni disminuye ni aumenta, y todos vienen a sacar agua. Si casi se llega al agua pero la cuerda no alcanza o se rompe el cántaro, desventura. La fuente inagotable de la vida humana necesita cuidado para llegar a todos.",
+i:"Sobre la madera está el agua, que sube por ella. Así el noble anima al pueblo en su trabajo y le exhorta a ayudarse mutuamente.",
+l:["No se bebe del lodo del pozo; a un pozo viejo no acude ningún animal. Quien se descuida y se enfanga deja de ser útil a nadie.",
+"Desde el agujero del pozo se dispara a los pececillos; el cántaro está roto y gotea. Los dones se desperdician en cosas pequeñas.",
+"El pozo está limpio, pero nadie bebe: eso causa pena. Se podría sacar agua; si el rey fuera lúcido, todos recibirían su bendición: el talento no aprovechado.",
+"Se reviste el pozo de piedra: no hay falta. Es un tiempo para el trabajo interior, aunque de momento no se sirva a otros.",
+"En el pozo hay una fuente fresca y clara de la que se puede beber. Hay cualidades excelentes que solo falta que alguien aproveche.",
+"Se saca agua del pozo sin trabas; es digno de confianza: elevada ventura. La fuente está abierta a todos y nunca se agota."]};
+
+H[49]={d:"La revolución: en tu propio día encontrarás confianza; elevado éxito, conviene la perseverancia y desaparece el arrepentimiento. Un cambio profundo solo es legítimo cuando llega su momento y responde a una necesidad real; entonces la gente lo apoya.",
+i:"En el lago hay fuego: se combaten y se transforman. Así el noble ordena el calendario y aclara los tiempos.",
+l:["Envuelto en piel de buey amarillo. Aún no es el momento: contente con firmeza.",
+"Cuando llega tu día, haz la revolución: avanzar trae ventura, sin falta. Prepárate bien y luego actúa con decisión.",
+"Partir trae desventura; la perseverancia es peligrosa. Cuando el anuncio del cambio ha circulado tres veces, uno puede comprometerse y le creerán: ni precipitación ni vacilación excesiva.",
+"Desaparece el arrepentimiento; la gente cree en él; cambiar el orden establecido trae ventura. La autoridad interior legitima el cambio.",
+"El gran hombre cambia como un tigre: incluso antes de consultar el oráculo ya tiene la confianza de todos. El cambio es tan claro que se impone por sí mismo.",
+"El noble cambia como una pantera; el vulgar cambia de cara. Seguir avanzando trae desventura; quedarse y perseverar trae ventura: hay que consolidar y no ir más lejos."]};
+
+H[50]={d:"El caldero: elevada ventura, éxito. El recipiente sagrado donde se cocinan las ofrendas simboliza la cultura que nutre lo espiritual; lo terreno se pone al servicio de lo divino.",
+i:"Fuego sobre la madera. Así el noble ocupa su lugar con rectitud y afianza su destino.",
+l:["Un caldero con las patas hacia arriba: conviene vaciar lo estancado. Se toma una concubina por amor a su hijo: no hay falta; hasta lo humilde puede servir si se purifica.",
+"En el caldero hay comida; mis compañeros me envidian, pero no pueden hacerme daño: ventura. Quien se concentra en su tarea no es alcanzado por la envidia.",
+"Las asas del caldero están cambiadas y se impide su uso; la grasa del faisán no se come. Cuando caiga la lluvia, desaparecerá el arrepentimiento y al final habrá ventura: el talento no reconocido acabará siéndolo.",
+"Se rompen las patas del caldero, se vierte la comida del príncipe y se mancha su figura: desventura. Asumir una tarea superior a las propias fuerzas trae desastre.",
+"Un caldero con asas amarillas y anillas de metal: conviene la perseverancia. La modestia receptiva atrae ayuda capaz.",
+"Un caldero con anillas de jade: gran ventura, todo es propicio. El sabio une dureza y suavidad, como el jade."]};
+
+H[51]={d:"Lo suscitativo tiene éxito. La conmoción llega y todos se asustan; luego vienen las risas. Aunque el trueno aterre a cien millas a la redonda, quien está recogido no deja caer la cuchara ni el cáliz de la ofrenda: el miedo bien vivido termina en alegría.",
+i:"Truenos que se repiten. Así el noble, con temor y temblor, pone en orden su vida y se examina a sí mismo.",
+l:["La conmoción llega, ¡ay, ay!, y después risas y palabras alegres: ventura. Tras el susto inicial, se ve que era para bien.",
+"La conmoción llega con peligro: pierdes tus bienes y subes a las nueve colinas. No corras tras ellos; al séptimo día los recobrarás.",
+"La conmoción desconcierta. Si la conmoción te impulsa a actuar, quedarás libre de desgracia.",
+"La conmoción se atasca en el lodo. Sin energía ni resistencia, la sacudida no tiene efecto.",
+"La conmoción va y viene, con peligro; nada se pierde, pero hay cosas que hacer. Mantente en tu centro y cumple tu tarea.",
+"La conmoción trae desconcierto y miradas aterradas: avanzar trae desventura. Si aún no te ha alcanzado a ti sino a tu vecino, no hay falta, aunque los allegados murmuren: apártate a tiempo."]};
+
+H[52]={d:"El aquietamiento: quietud de la espalda, de modo que ya no siente su cuerpo; va por su patio y no ve a su gente: no hay falta. Calmar el corazón permite detenerse cuando toca detenerse y actuar cuando toca actuar.",
+i:"Montañas una junto a otra. Así el noble no deja que sus pensamientos vayan más allá de su situación.",
+l:["Quietud en los dedos de los pies: no hay falta; conviene la perseverancia constante. Detenerse antes de empezar a moverse.",
+"Quietud en las pantorrillas: no puede salvar a aquel a quien sigue; su corazón no está contento. Arrastrado por otro, no puede detenerlo.",
+"Quietud en las caderas, rigidez en la espalda: peligro, el corazón se sofoca. La quietud forzada no es verdadera calma.",
+"Quietud del tronco: no hay falta. Calmar el ego, aunque aún no se haya alcanzado la plenitud.",
+"Quietud en las mandíbulas: las palabras tienen orden y desaparece el arrepentimiento. Hablar con mesura.",
+"Quietud magnánima: ventura. La paz interior plena y duradera."]};
+
+H[53]={d:"La evolución: la muchacha es dada en matrimonio; ventura, conviene la perseverancia. Las cosas valiosas se desarrollan paso a paso, siguiendo el orden debido, como el árbol que crece despacio en la montaña.",
+i:"Sobre la montaña hay un árbol. Así el noble permanece en la dignidad y la virtud para mejorar las costumbres.",
+l:["El ganso salvaje se acerca poco a poco a la orilla; el joven está en peligro y hay habladurías, pero no falta. Los comienzos son solitarios y difíciles.",
+"El ganso salvaje se acerca poco a poco a la roca: comer y beber en paz y armonía, ventura. Se alcanza una primera seguridad que se comparte con otros.",
+"El ganso salvaje se acerca a la meseta: el marido parte y no vuelve; la mujer lleva un hijo y no lo da a luz; desventura. Conviene defenderse de los bandidos: la precipitación lleva al desastre.",
+"El ganso salvaje se acerca al árbol; quizás encuentre una rama plana: no hay falta. Adaptarse con flexibilidad a una situación incómoda.",
+"El ganso salvaje se acerca a la cumbre; la mujer pasa tres años sin hijos, pero al final nada la detiene: ventura. El aislamiento es temporal y la unión llega.",
+"El ganso salvaje se acerca a las nubes; sus plumas pueden usarse para la danza sagrada: ventura. Una vida cumplida se vuelve ejemplo para los demás."]};
+
+H[54]={d:"La muchacha que se casa: emprender trae desventura; nada es propicio. En una posición subordinada, que uno no ha elegido del todo, hacen falta tacto y reserva, y tener presente el fin de las cosas.",
+i:"Sobre el lago está el trueno. Así el noble comprende lo transitorio a la luz de la eternidad del final.",
+l:["La muchacha se casa como concubina; un cojo que puede andar: emprender trae ventura. Desde una posición modesta, con discreción, se puede hacer mucho bien.",
+"Un tuerto que puede ver: conviene la perseverancia de quien vive retirado. Fidelidad pese a la desilusión.",
+"La muchacha se casa como esclava; se casa como concubina. Aceptar por puro deseo una situación indigna no trae nada bueno.",
+"La muchacha retrasa la boda; un casamiento tardío llega a su tiempo. Esperar a lo adecuado conservando la pureza.",
+"El soberano I dio a su hija en matrimonio; los vestidos de la princesa eran menos espléndidos que los de la dama de compañía. La luna casi llena: ventura. La humildad de quien no necesita lucirse.",
+"La mujer sostiene la cesta, pero no hay frutos; el hombre sacrifica la oveja, pero no corre la sangre: nada es propicio. Una forma vacía sin compromiso interior."]};
+
+H[55]={d:"La plenitud tiene éxito; el rey la alcanza. No estés triste: sé como el sol a mediodía. La plenitud es transitoria, pero no hay que lamentarlo; hay que irradiarla mientras dura.",
+i:"Trueno y relámpago llegan juntos. Así el noble decide los pleitos y aplica las penas.",
+l:["Encuentra a su señor complementario: aunque estén juntos diez días, no hay falta. Ir trae reconocimiento: la claridad y la energía se buscan y se completan.",
+"La cortina es tan densa que a mediodía se ven las estrellas. Ir trae desconfianza y aversión; si se despierta al otro con sinceridad, ventura.",
+"La maleza es tan densa que a mediodía se ven las estrellas pequeñas; se rompe el brazo derecho: no hay falta. Cuando todo está bloqueado, no se puede actuar y no es culpa de uno.",
+"La cortina es tan densa que a mediodía se ven las estrellas; encuentra a su señor afín: ventura. La unión de sabiduría y energía disipa la oscuridad.",
+"Llegan personas capaces; bendición y fama cercanas: ventura. El gobernante modesto que acoge el consejo de otros prospera.",
+"Su casa está en plenitud y tapa a su familia; mira por la puerta y está desierta; tres años sin ver a nadie: desventura. La soberbia aísla."]};
+
+H[56]={d:"El andariego: éxito en lo pequeño; la perseverancia trae ventura al caminante. El extranjero no tiene apoyos; debe ser cauto, reservado, amable y digno, y relacionarse solo con gente de bien.",
+i:"Sobre la montaña hay fuego, que pasa sin quedarse. Así el noble aplica las penas con claridad y cautela, y no prolonga los litigios.",
+l:["Si el caminante se ocupa de cosas mezquinas, atrae la desgracia. En tierra ajena hay que conservar la dignidad.",
+"El caminante llega a una posada, tiene consigo sus bienes y gana la lealtad de un joven servidor. La reserva y la amabilidad le aseguran apoyos.",
+"Se incendia la posada del caminante y pierde la lealtad de su joven servidor: peligro. La arrogancia y la injerencia lo pierden todo.",
+"El caminante descansa en un refugio, consigue sus bienes y un hacha, pero dice: «Mi corazón no está contento». Hay seguridad, pero siempre a la defensiva y sin hogar.",
+"Dispara a un faisán y lo abate con la primera flecha: al final, elogio y un cargo. Saber presentarse bien abre las puertas en tierra extraña.",
+"Al pájaro se le quema el nido; el caminante primero ríe y luego se lamenta y llora; pierde la vaca por descuido: desventura. La ligereza y la soberbia destruyen el propio refugio."]};
+
+H[57]={d:"Lo suave: éxito en lo pequeño; conviene tener adónde ir y ver al gran hombre. Como el viento, la influencia penetra poco a poco y sin interrupción; su fuerza está en la constancia y en tener una meta clara.",
+i:"Vientos que se siguen uno tras otro. Así el noble difunde sus mandatos y lleva a cabo sus asuntos.",
+l:["Avanzar y retroceder: conviene la perseverancia de un guerrero. La indecisión se supera con disciplina y resolución.",
+"Penetrar bajo la cama: se recurre a sacerdotes y magos en gran número; ventura, sin falta. Hay que sacar a la luz las influencias ocultas.",
+"Penetración repetida: humillación. Darle demasiadas vueltas a algo impide actuar.",
+"Desaparece el arrepentimiento: en la caza se capturan tres clases de presa. La experiencia y la modestia unidas a la acción enérgica dan grandes resultados.",
+"La perseverancia trae ventura, desaparece el arrepentimiento, nada que no sea propicio. Sin buen comienzo, pero con buen final: antes del cambio tres días, después tres días; ventura.",
+"Penetrar bajo la cama: pierde sus bienes y su hacha; la perseverancia trae desventura. Quien rebusca demasiado en lo oculto se queda sin fuerzas para actuar."]};
+
+H[58]={d:"Lo sereno tiene éxito; conviene la perseverancia. La alegría verdadera nace de la firmeza interior unida a la suavidad exterior; así se gana a los demás sin halagarlos ni forzarlos.",
+i:"Lagos unidos que se nutren mutuamente. Así el noble se reúne con sus amigos para conversar y ejercitarse juntos.",
+l:["Serenidad contenta: ventura. La alegría tranquila, que no necesita nada de fuera.",
+"Serenidad sincera: ventura; desaparece el arrepentimiento. No dejarse arrastrar por placeres indignos.",
+"Serenidad que viene de fuera: desventura. Buscar la alegría en las diversiones exteriores vacía por dentro.",
+"Serenidad que sopesa y no encuentra paz. Cuando uno se aparta de lo inferior, encuentra la alegría.",
+"Confiar en lo que desintegra es peligroso. Cuidado con influencias que socavan desde dentro.",
+"Serenidad seductora. Quien se deja llevar por los placeres exteriores pierde el rumbo."]};
+
+H[59]={d:"La disolución tiene éxito: el rey se acerca a su templo; conviene atravesar las grandes aguas y la perseverancia. Hay que disolver el egoísmo y la rigidez que separan a las personas, uniéndolas en algo más alto que ellas.",
+i:"El viento recorre las aguas y deshace el hielo. Así los reyes antiguos hacían ofrendas al Señor y erigían templos.",
+l:["Ayuda con la fuerza de un caballo: ventura. La discordia se disuelve mejor cuanto antes se actúa.",
+"En la disolución corre hacia su apoyo: desaparece el arrepentimiento. Ante la propia dureza, buscar el sostén de algo justo.",
+"Disuelve su propio yo: no hay arrepentimiento. Renunciar a uno mismo para entregarse a la tarea.",
+"Disuelve su vínculo con su grupo: elevada ventura. La disolución trae una reunión mayor, algo que la gente común no imagina.",
+"Disolución como el sudor que limpia: un gran grito; disolución en la residencia del rey: no hay falta. Una idea grande y clara reúne a todos en tiempos de dispersión.",
+"Disuelve su sangre: partir, mantenerse lejos, salir; no hay falta. Apartarse del peligro protegiendo también a los suyos."]};
+
+H[60]={d:"La restricción tiene éxito, pero no hay que perseverar en una restricción amarga. Los límites dan forma y sentido a la vida, como las secciones de la caña de bambú, siempre que se pongan con medida.",
+i:"Agua sobre el lago, que tiene un límite. Así el noble establece número y medida, y examina qué son la virtud y la conducta recta.",
+l:["No sale por la puerta ni del patio: no hay falta. Saber cuándo no hay que salir es sabiduría.",
+"No sale por la puerta ni del patio: desventura. Quedarse quieto cuando toca actuar es perder la ocasión.",
+"Quien no conoce la restricción tendrá que lamentarse: no hay falta. Si uno reconoce que sus excesos le han traído el mal, no hay culpa que buscar fuera.",
+"Restricción serena: éxito. La medida natural, aceptada sin esfuerzo.",
+"Restricción dulce: ventura; avanzar trae estima. Quien se limita primero a sí mismo puede pedir lo mismo a otros.",
+"Restricción amarga: la perseverancia trae desventura, pero el arrepentimiento desaparece. A veces la dureza extrema es necesaria, pero no puede durar."]};
+
+H[61]={d:"La verdad interior: cerdos y peces, ventura; conviene atravesar las grandes aguas y la perseverancia. La sinceridad sin prejuicios llega incluso a los seres más difíciles de alcanzar; con el corazón abierto se influye hasta en lo más lejano.",
+i:"El viento sobre el lago, que lo agita hasta el fondo. Así el noble examina los procesos penales para demorar las ejecuciones.",
+l:["Estar preparado trae ventura. Si hay segundas intenciones, inquietud: la verdad interior debe apoyarse en sí misma.",
+"Una grulla llama desde la sombra y su cría le responde. «Tengo una buena copa; la compartiré contigo»: la sinceridad encuentra eco aunque sea en lo escondido.",
+"Encuentra un compañero: ora toca el tambor, ora se detiene, ora llora, ora canta. Quien hace depender su alegría de otro vive a merced de sus vaivenes.",
+"La luna está casi llena; el caballo del tiro se pierde: no hay falta. Humildad y reverencia hacia lo alto, renunciando a los intereses del propio grupo.",
+"Posee la verdad que une a todos: no hay falta. La fuerza de carácter del líder mantiene unido el conjunto.",
+"Canto del gallo que quiere subir al cielo: la perseverancia trae desventura. Las palabras grandilocuentes sin fondo no llegan lejos."]};
+
+H[62]={d:"La preponderancia de lo pequeño: éxito, conviene la perseverancia. Pueden hacerse cosas pequeñas, no grandes. El pájaro en vuelo deja su mensaje: no conviene subir, conviene bajar; gran ventura. Es tiempo de modestia, cuidado y atención a lo menudo.",
+i:"Sobre la montaña está el trueno. Así el noble, en su conducta, da preponderancia al respeto; en el duelo, a la aflicción; en sus gastos, a la economía.",
+l:["El pájaro, al volar, encuentra desventura. Querer volar antes de tiempo trae desgracia; quédate en lo conocido.",
+"Pasa por delante de su abuelo y encuentra a su abuela; no llega a su príncipe, pero encuentra a su ministro: no hay falta. Aceptar el lugar modesto y cumplir el deber.",
+"Si uno no es extraordinariamente cauteloso, alguien puede atacarle por detrás: desventura. Confiarse por sentirse en lo cierto es peligroso.",
+"No hay falta: no lo sobrepasa, le sale al encuentro. Ir es peligroso; hay que estar en guardia y no actuar, sino perseverar en lo interior.",
+"Densas nubes, sin lluvia, desde nuestra región del oeste. El príncipe dispara y alcanza al que está en la cueva: hay que buscar ayudantes modestos y capaces.",
+"Sin encontrarlo, lo sobrepasa; el pájaro en vuelo lo abandona: desventura, desgracia y daño. Quien va demasiado lejos atrae la desgracia sobre sí."]};
+
+H[63]={d:"Después de la consumación: éxito en lo pequeño; conviene la perseverancia. Al principio ventura, al final desorden. Todo está en su sitio, pero precisamente por eso hay que vigilar, pues el equilibrio perfecto tiende a deshacerse.",
+i:"El agua está sobre el fuego. Así el noble piensa en la desgracia y se protege de ella de antemano.",
+l:["Frena sus ruedas; se moja la cola: no hay falta. No dejarse arrastrar por el entusiasmo general hacia adelante.",
+"La mujer pierde la cortina de su carruaje; no corras tras ella: al séptimo día la recuperarás. Lo que es tuyo vuelve sin necesidad de reclamarlo.",
+"El Ilustre Antepasado castiga el país del diablo y en tres años lo vence; no hay que emplear a hombres vulgares. Las grandes empresas tras la consumación cuestan mucho y exigen buena gente.",
+"Las mejores ropas acaban en harapos: hay que estar alerta todo el día. Un pequeño fallo oculto puede crecer; vigilancia.",
+"El vecino del este que sacrifica un buey recibe menos bendición que el vecino del oeste con su humilde ofrenda. La sinceridad sencilla vale más que la pompa.",
+"Se moja la cabeza: peligro. Quien después de cruzar el río vuelve la vista atrás y se detiene corre el riesgo de hundirse."]};
+
+H[64]={d:"Antes de la consumación: éxito. Pero si el pequeño zorro, casi al final de la travesía, se moja la cola, nada es propicio. Es la transición del desorden al orden: hay que avanzar con la cautela del zorro viejo que cruza el hielo.",
+i:"El fuego está sobre el agua. Así el noble distingue con cuidado las cosas para que cada una ocupe su lugar.",
+l:["Se moja la cola: humillación. Lanzarse antes de tiempo, sin ver las condiciones, lleva al fracaso.",
+"Frena sus ruedas: la perseverancia trae ventura. Esperar con fuerza contenida a que llegue el momento.",
+"Antes de la consumación, atacar trae desventura; conviene atravesar las grandes aguas. Las propias fuerzas no bastan; con ayuda, en un nuevo terreno, se puede avanzar.",
+"La perseverancia trae ventura y desaparece el arrepentimiento. Una conmoción para castigar el país del diablo: tres años después, recompensas del gran reino; es tiempo de lucha decidida.",
+"La perseverancia trae ventura, sin arrepentimiento. La luz del noble es verdadera: ventura; la victoria se ha logrado y brilla.",
+"Hay confianza al beber vino: no hay falta. Pero si uno se moja la cabeza, pierde lo que tenía: celebrar con mesura la nueva época."]};
+
+
+/* ---------- Lógica ---------- */
+var POS = ["al comienzo","en el segundo puesto","en el tercer puesto","en el cuarto puesto","en el quinto puesto","arriba"];
+
+function randBit(){
+  var a = new Uint8Array(1);
+  crypto.getRandomValues(a);
+  return a[0] & 1;
+}
+/* Cara = 3, Cruz = 2 */
+function tossCoins(){
+  var c = [randBit()?3:2, randBit()?3:2, randBit()?3:2];
+  return {coins:c, sum:c[0]+c[1]+c[2]};
+}
+function isYang(v){ return v===7 || v===9; }
+function isMoving(v){ return v===6 || v===9; }
+function changedLine(v){ return v===6 ? 7 : v===9 ? 8 : v; }
+function trigramBits(lines, start){
+  var b = 0;
+  for (var k=0;k<3;k++){ if (isYang(lines[start+k])) b |= (1<<k); }
+  return b;
+}
+function hexFromLines(lines){
+  var lo = trigramBits(lines,0), up = trigramBits(lines,3);
+  return {num:KW[lo][up], lower:lo, upper:up};
+}
+function lineLabel(v, i){
+  return (v===9||v===7 ? "Nueve " : "Seis ") + POS[i];
+}
+function analyse(lines){
+  var p = hexFromLines(lines);
+  var moving = [];
+  for (var i=0;i<6;i++) if (isMoving(lines[i])) moving.push(i);
+  var res = {primary:p, moving:moving, lines:lines.slice()};
+  if (moving.length){
+    res.changed = lines.map(changedLine);
+    res.secondary = hexFromLines(res.changed);
+  }
+  res.allChange = moving.length===6 && (p.num===1 || p.num===2);
+  return res;
+}
+
+/* ---------- Interfaz ---------- */
+if (typeof document !== "undefined") (function(){
+  var root = document.documentElement;
+  var KEY = "iching-tema";
+  try { var saved = localStorage.getItem(KEY); if (saved==="light"||saved==="dark") root.setAttribute("data-theme", saved); } catch(e){}
+  function currentDark(){
+    var t = root.getAttribute("data-theme");
+    if (t) return t==="dark";
+    return !!(window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches);
+  }
+  var themeBtn = document.getElementById("themeBtn");
+  function syncThemeBtn(){ themeBtn.textContent = currentDark() ? "☀" : "☾"; }
+  syncThemeBtn();
+  themeBtn.addEventListener("click", function(){
+    var next = currentDark() ? "light" : "dark";
+    root.setAttribute("data-theme", next);
+    try { localStorage.setItem(KEY, next); } catch(e){}
+    syncThemeBtn();
+  });
+
+  var lines = [];
+  var busy = false;
+  var $ = function(id){ return document.getElementById(id); };
+  var coinsEl = $("coins"), buildEl = $("building"), progEl = $("progress"), resEl = $("result");
+  var bTirar = $("tirar"), bRapida = $("rapida"), bNueva = $("nueva"), qEl = $("pregunta");
+
+  function esc(s){ return String(s).replace(/[&<>"]/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;"}[c];}); }
+
+  function lineHTML(v, idx, opts){
+    opts = opts||{};
+    var yang = isYang(v);
+    var mk = opts.marks===false ? "" : (v===9 ? "○" : v===6 ? "✕" : "");
+    var bar = yang ? "<i></i>" : "<i></i><i></i>";
+    return '<div class="ln'+(opts.fresh?' new':'')+'" title="Línea '+(idx+1)+': '+v+'">'+
+      '<span class="num">'+(opts.nums===false?'':(idx+1))+'</span><span class="bar">'+bar+'</span><span class="mk">'+mk+'</span></div>';
+  }
+  function emptyLine(idx){
+    return '<div class="ln empty"><span class="num">'+(idx+1)+'</span><span class="bar"><i></i></span><span class="mk"></span></div>';
+  }
+  function renderBuilding(fresh){
+    var html = "";
+    for (var i=0;i<6;i++) html += i<lines.length ? lineHTML(lines[i], i, {fresh: fresh && i===lines.length-1}) : emptyLine(i);
+    buildEl.innerHTML = html;
+  }
+  function hexDrawing(ls, small, marks){
+    var h = "";
+    for (var i=0;i<6;i++) h += lineHTML(ls[i], i, {marks:marks, nums:!small});
+    return '<div class="hex'+(small?' sm':'')+'" aria-hidden="true">'+h+'</div>';
+  }
+  var NUMWORD = ["primera","segunda","tercera","cuarta","quinta","sexta"];
+  function showCoins(t, animate){
+    var h = "";
+    t.coins.forEach(function(c){
+      var cara = c===3;
+      h += '<div class="coin '+(cara?'cara':'cruz')+(animate?' spin':'')+'"><span class="f">'+(cara?'Cara':'Cruz')+'</span><span class="v">'+c+'</span></div>';
+    });
+    var name = {6:"yin mutable ✕",7:"yang fijo",8:"yin fijo",9:"yang mutable ○"}[t.sum];
+    h += '<div class="coinsum">'+t.coins.join(" + ")+' = <b>'+t.sum+'</b> · '+name+'</div>';
+    coinsEl.innerHTML = h;
+  }
+  function updateButtons(){
+    var done = lines.length>=6;
+    bTirar.disabled = busy || done;
+    bRapida.disabled = busy || done;
+    bTirar.textContent = done ? "Consulta completa" : (lines.length ? "Tirar monedas ("+(lines.length+1)+"/6)" : "Tirar monedas");
+  }
+  function addLine(animate){
+    var t = tossCoins();
+    lines.push(t.sum);
+    showCoins(t, animate);
+    renderBuilding(true);
+    progEl.textContent = lines.length<6 ? ("Línea "+lines.length+" de 6 trazada ("+NUMWORD[lines.length-1]+" desde abajo).") : "Las seis líneas están trazadas.";
+  }
+  bTirar.addEventListener("click", function(){
+    if (busy || lines.length>=6) return;
+    busy = true; updateButtons();
+    coinsEl.innerHTML = '<div class="coin spin"><span class="f">·</span></div><div class="coin spin"><span class="f">·</span></div><div class="coin spin"><span class="f">·</span></div>';
+    setTimeout(function(){
+      addLine(false);
+      busy = false; updateButtons();
+      if (lines.length===6) showResult();
+    }, 560);
+  });
+  bRapida.addEventListener("click", function(){
+    if (busy) return;
+    var last = null;
+    while (lines.length<6){ var t = tossCoins(); lines.push(t.sum); last = t; }
+    if (last) showCoins(last, true);
+    renderBuilding(false);
+    progEl.textContent = "Tirada rápida: las seis líneas están trazadas.";
+    updateButtons();
+    showResult();
+  });
+  bNueva.addEventListener("click", function(){
+    lines = []; busy = false;
+    coinsEl.innerHTML = ""; resEl.innerHTML = ""; resEl.classList.add("hidden");
+    progEl.textContent = "Concéntrate en tu pregunta y tira las monedas seis veces.";
+    renderBuilding(false); updateButtons();
+    qEl.focus();
+  });
+
+  function triBox(label, b){
+    var t = TRI[b];
+    return '<div class="tri"><span class="sym">'+t.sym+'</span><div><div class="t1">'+label+'</div>'+
+      '<div class="t2">'+t.py+' · '+t.es+'</div><div class="t3">Imagen: '+t.img+' · Atributo: '+t.attr+'</div></div></div>';
+  }
+  function hexHeader(h, ls, kicker, marks){
+    var n = NAMES[h.num];
+    return '<div class="hexhead">'+hexDrawing(ls, false, marks)+
+      '<div><p class="kw">'+kicker+' · Hexagrama '+h.num+'</p><h2><span class="py">'+esc(n[0])+'</span></h2><p class="es">'+esc(n[1])+'</p></div></div>'+
+      '<div class="tris">'+triBox("Trigrama superior", h.upper)+triBox("Trigrama inferior", h.lower)+'</div>';
+  }
+  function showResult(){
+    var r = analyse(lines);
+    var p = r.primary, D = H[p.num];
+    var q = qEl.value.trim();
+    var html = '<div class="card">';
+    if (q) html += '<p class="qshow">«'+esc(q)+'»</p>';
+    html += hexHeader(p, r.lines, "Signo primario", true);
+    html += '<section class="sec"><h3>El dictamen</h3><p>'+esc(D.d)+'</p></section>';
+    html += '<section class="sec"><h3>La imagen</h3><p>'+esc(D.i)+'</p></section>';
+    html += '<section class="sec"><h3>Las líneas que cambian</h3>';
+    if (!r.moving.length){
+      html += '<p>No hay líneas mutables: el hexagrama se lee tal como está, solo con su dictamen y su imagen.</p>';
+    } else {
+      html += '<ul class="lines">';
+      r.moving.forEach(function(i){
+        html += '<li><b>'+lineLabel(lines[i], i)+'</b><br>'+esc(D.l[i])+'</li>';
+      });
+      html += '</ul>';
+      if (r.allChange && D.all) html += '<div class="allnote">'+esc(D.all)+'</div>';
+    }
+    html += '</section></div>';
+    if (r.secondary){
+      var s = r.secondary, S = H[s.num];
+      html += '<div class="arrow"><span>Se transforma en…</span></div>';
+      html += '<div class="card">'+hexHeader(s, r.changed, "Signo resultante", false);
+      html += '<section class="sec"><h3>El dictamen</h3><p>'+esc(S.d)+'</p></section>';
+      html += '<section class="sec"><h3>La imagen</h3><p>'+esc(S.i)+'</p></section></div>';
+    }
+    resEl.innerHTML = html;
+    resEl.classList.remove("hidden");
+    try { resEl.scrollIntoView({behavior:"smooth", block:"start"}); } catch(e){}
+  }
+
+  renderBuilding(false); updateButtons();
+})();
+</script>
+</body>
+</html>
